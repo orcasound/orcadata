@@ -15,7 +15,7 @@ basePath = r"/Users/scott/Dropbox/Scottcoding/Orcasound/"
 
 #plotPath = join(basePath, "orcadata", "spectrogram", "Plots")
 folderpath_flac = join(basePath, "orcadata", "Sounds", "catalog", "flac")
-onlyfiles = [f for f in listdir(folderpath_flac) if isfile(join(join(folderpath_flac, f)))]
+onlyfiles = sorted([f for f in listdir(folderpath_flac) if isfile(join(join(folderpath_flac, f)))])
 htmlpath = join(basePath, "orcadata", "Website")
 base_URL = "https://github.com/orcasound/orcadata/"
 
