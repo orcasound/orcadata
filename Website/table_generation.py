@@ -17,7 +17,7 @@ basePath = r"/Users/scott/Dropbox/Scottcoding/Orcasound/"
 folderpath_flac = join(basePath, "orcadata", "Sounds", "catalog", "flac")
 onlyfiles = sorted([f for f in listdir(folderpath_flac) if isfile(join(join(folderpath_flac, f)))])
 htmlpath = join(basePath, "orcadata", "Website")
-base_URL = "https://github.com/orcasound/orcadata/tree/master/"
+base_URL = "http://www.orcasound.net/data/product/SRKW/call-catalog/no-narration_flac+mp3+ogg+spectrograms/"
 title_text = "Sound spectrum table"
 
 f = open(join(htmlpath, "spectrum_comparison.html"), "w")
@@ -29,12 +29,12 @@ for file in onlyfiles:
     f.write("<tr>\n<td>\n")
     f.write("<h3>" + heading + "<h3>\n")
     f.write("<audio controls>\n")
-    f.write("<source src=\"" + base_URL + "Sounds/catalog/mp3/" + file_name + ".mp3\" " 'type="audio/mp3">\n')
-    f.write("<source src=\"" + base_URL + "Sounds/catalog/ogg/" + file_name + ".ogg\" " 'type="audio/ogg">\n')
+    f.write("<source src=\"" + base_URL + "mp3/" + file_name + ".mp3\" " 'type="audio/mp3">\n')
+    f.write("<source src=\"" + base_URL + "ogg/" + file_name + ".ogg\" " 'type="audio/ogg">\n')
     f.write("</audio>\n")
     f.write("</td>\n")
-    f.write("<td> <img src=\"" + base_URL + "Spectrogram/Plots/" + file_name + ".png\"> </td>\n")
-    f.write("<td> <img src=\"" + base_URL + "Spectrogram/Plots-Ford/" + heading + ".png\"> </td>\n")
+    f.write("<td> <img src=\"" + base_URL + "spectrogram-pngs/" + file_name + ".png\"> </td>\n")
+    f.write("<td> <img src=\"" + "http://www.orcasound.net/data/raw/SRKW-Ford-Osborne-tapes/Ford89-SRKW-spectrograms/" + heading + ".png\"> </td>\n")
     f.write("</tr>\n")
 f.write("</table>\n</body>\n</html>")
 
