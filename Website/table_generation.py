@@ -17,9 +17,11 @@ basePath = r"/Users/scott/Dropbox/Scottcoding/Orcasound/"
 folderpath_flac = join(basePath, "orcadata", "Sounds", "catalog", "flac")
 onlyfiles = sorted([f for f in listdir(folderpath_flac) if isfile(join(join(folderpath_flac, f)))])
 htmlpath = join(basePath, "orcadata", "Website")
-base_URL = "https://github.com/orcasound/orcadata/"
+base_URL = "https://github.com/orcasound/orcadata/tree/master/"
+title_text = "Sound spectrum table"
 
 f = open(join(htmlpath, "spectrum_comparison.html"), "w")
+f.write("<html>\n\n<head>\n<title>" + title_text + "</title>\n</head>\n\n<body>\n<h2>" + title_text + "</h2>\n ")
 f.write("<table>\n")
 for file in onlyfiles:
     file_name = file.split(".")[0]
@@ -34,5 +36,5 @@ for file in onlyfiles:
     f.write("<td> <img src=\"" + base_URL + "Spectrogram/Plots/" + file_name + ".png\"> </td>\n")
     f.write("<td> <img src=\"" + base_URL + "Spectrogram/Plots-Ford/" + heading + ".png\"> </td>\n")
     f.write("</tr>\n")
-f.write("</table>\n")
+f.write("</table>\n</body>\n</html>")
 
