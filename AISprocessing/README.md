@@ -32,4 +32,12 @@ Program:  aws_ec2_access_s3.py
 
 Parameters: local and EC2 file names with paths
 
+(3)  With mmsi number go out on web and find metadata for this ship (ship name, ship type,.....)
 
+Program: parsePage.py
+
+Parameters: mmsi number
+
+(4)  Pull everything together in a single program
+
+Program: processAIS.py
