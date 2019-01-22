@@ -12,7 +12,7 @@ Python3 routines to:
 
 		check RDS mysql database (shipspecs) for ship metadata
 
-		go out on WWW and get ship metadata
+		go out on WWW and get ship metadata and then update mysql database
 
 	construct summary html file and put in S3 bucket
 
