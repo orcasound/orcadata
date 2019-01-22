@@ -17,3 +17,19 @@ Python3 routines to:
 	construct summary html file and put in S3 bucket
 
 See AWS_FlowDiagram.jpg for flow chart
+
+(1)  Read AIS data from serial port and determine if ships are ‘in range’ and if so, upload report to S3.
+
+Computer:  Ubuntu laptop at hydrophone node connected to AIS vhf radio receiver
+
+Program:  AIS_node_to_EC2.py
+
+Parameters:  Node latitude and longitude, Center of shipping lanes lat and long,  Range (m) for ship to be “in range”, (default 10000),  Port for serial port ('/dev/ttyUSB0'), S3 bucket/filename where reports are put (/home/val/pythonFiles/upload/OS_rt.txt)
+
+(2)  Upload a local file to S3 bucket (and print first items in file's lines)
+
+Program:  aws_ec2_access_s3.py
+
+Parameters: local and EC2 file names with paths
+
+
