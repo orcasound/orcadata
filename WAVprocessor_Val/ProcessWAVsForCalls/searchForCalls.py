@@ -188,7 +188,7 @@ def searchForCalls(thisWAV, callOutput, dirOutput):
     #    if idx > 300000:
     #        done = True    plt.scatter(xplot,xplot/np.max(xplot))
             
-    plt.figure(figsize=(14,8))        
+    fig = plt.figure(figsize=(14,8))        
     plt.plot(xplot,yNpeaks/np.max(yNpeaks), color = 'blue')
     plt.scatter(xplot,ycallLen/np.max(ycallLen),color='red')
     plt.scatter(xplot,ycallPeak/np.max(ycallPeak),color='black')
@@ -198,5 +198,5 @@ def searchForCalls(thisWAV, callOutput, dirOutput):
     plt.title(outFileName +" blue=N peaks, red = length of call, black = max peak amp -- all normalized to 1")
 
     outFileName = dirOutput+outFileName+".jpg"
-    plt.savefig(outFileName)
+    fig.savefig(outFileName)
 #    plt.show()  
