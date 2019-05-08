@@ -3,27 +3,27 @@
 import glob
 from datetime import datetime
 import time
-
+import numpy as np
 import searchForCalls as sff
 import importlib
 importlib.reload(sff)
 """
 
 """
-dirWAVs = "/home/val/WAVs"           # folder with wav files
+dirWAVs = "/media/val/021109_2341/"           # folder with wav files
 dirOutput = "/home/val/WAVs/Calls"   # folder where output is placed
 
 if dirWAVs.split('/') != '':   #Make sure directory has a final /
     dirWAVs += "/"
+if dirOutput.split('/') != '':   #Make sure directory has a final /
+    dirOutput += "/"
     
 theWAVs = glob.glob(dirWAVs+"*.wav")
 theWAVs = theWAVs + glob.glob(dirWAVs+"*.WAV")
 
- # setup output file 
+print("num wavs",len(theWAVs))
  
-dirOutput = "/home/val/WAVs/Calls"
-if dirOutput.split('/') != '':   #Make sure directory has a final /
-    dirOutput += "/"
+
 
 timeNow = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 outputFile = dirOutput + 'callList_'+timeNow+'.txt'
