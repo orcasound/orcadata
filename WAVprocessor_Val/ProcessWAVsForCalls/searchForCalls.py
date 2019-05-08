@@ -199,4 +199,4 @@ def searchForCalls(thisWAV, callOutput, dirOutput):
 
     outFileName = dirOutput+outFileName+".jpg"
     plt.savefig(outFileName)
-    plt.show()  
+#    plt.show()  
