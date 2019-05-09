@@ -17,14 +17,15 @@ The top level Python program is scanAudioFilesForCall.py
 
 searchForCall.py is the main file that scans for calls.
 
-First, it reads in WAV file.
+First, it reads in WAV or FLAC file.
 
 In a loop, it moves along the data in blocks of size Nsamples/4 (4096 is ~0.1 sec at 44,100 sample rate)
 
 In each case the smoothed PSD for a Nsamples section of data is calculated
 1.  The PSD is calculated via Welch’s method in subsets of 256 samples drawn from the Nsamples section under analysis
-2.. Detrend the PSD
-3.. Run savgol filter over the PSD twice
+2.  Detrend the PSD
+3.  Run savgol filter over the PSD twice
+
 
 Then the smoothed background is subtracted and 
 1.  the first 25 PSD values are set to 0 (high pass filter at about 400 hz)
