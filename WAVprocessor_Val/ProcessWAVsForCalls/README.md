@@ -3,37 +3,9 @@ My current program for detecting calls in WAV  files   --  ValVeirs --          
 This program detects calls by examining peaks in the power spectral density (PSD).  “Good” calls have a relatively long duration and relatively high PSD.
 
 Reports look like this:
+
 fileName	startidx	stopidx	lencall	f0	sigma_f0	peak	sigma_peak
-NATURE11_09_02_21_23_3701	0	2048	2048	1152	161	260	29
-NATURE11_09_02_21_23_3701	8192	9216	1024	0	0	175	0
-NATURE11_09_02_21_23_3701	12288	13312	1024	0	0	167	0
-NATURE11_09_02_21_23_3701	14336	16384	2048	0	0	168	1
-NATURE11_09_02_21_23_3701	19456	59392	39936	500	376	2472	3452
-NATURE11_09_02_21_23_3701	66560	67584	1024	0	0	223	0
-NATURE11_09_02_21_23_3701	69632	70656	1024	0	0	159	0
-NATURE11_09_02_21_23_3701	71680	72704	1024	0	0	188	0
-NATURE11_09_02_21_23_3701	74752	76800	2048	0	0	178	18
-NATURE11_09_02_21_23_3701	83968	90112	6144	222	497	206	20
-NATURE11_09_02_21_23_3701	91136	93184	2048	818	0	211	42
-NATURE11_09_02_21_23_3701	98304	102400	4096	0	0	203	46
-NATURE11_09_02_21_23_3701	103424	108544	5120	167	335	183	7
-NATURE11_09_02_21_23_3701	109568	111616	2048	0	0	214	28
-NATURE11_09_02_21_23_3701	113664	116736	3072	631	446	202	52
-NATURE11_09_02_21_23_3701	117760	119808	2048	462	462	192	2
-NATURE11_09_02_21_23_3701	122880	134144	11264	634	741	252	86
-NATURE11_09_02_21_23_3701	136192	137216	1024	0	0	156	0
-NATURE11_09_02_21_23_3701	138240	147456	9216	291	450	317	75
-NATURE11_09_02_21_23_3701	148480	150528	2048	0	0	500	4
-NATURE11_09_02_21_23_3701	158720	173056	14336	805	956	241	65
-NATURE11_09_02_21_23_3701	182272	183296	1024	0	0	157	0
-NATURE11_09_02_21_23_3701	187392	211968	24576	733	411	709	456
-NATURE11_09_02_21_23_3701	214016	219136	5120	691	565	313	100
-NATURE11_09_02_21_23_3701	221184	270336	49152	558	552	21928	34971
-NATURE11_09_02_21_23_3701	271360	276480	5120	447	306	1804	903
-NATURE11_09_02_21_23_3701	278528	287744	9216	805	661	422	238
-NATURE11_09_02_21_23_3701	291840	292864	1024	0	0	166	0
-NATURE11_09_02_21_23_3701	293888	294912	1024	0	0	165	0
-NATURE11_09_02_21_23_3701	295936	299008	3072	0	0	210	10
+
 
 
 The 'best' calls seem to be the ones with a long length (lencall in samples) and strong peaks (peak)
@@ -45,18 +17,21 @@ The top level Python program is scanAudioFilesForCall.py
 
 searchForCall.py is the main file that scans for calls.
 
-First, it reads in WAV file.
+First, it reads in WAV or FLAC file.
 
 In a loop, it moves along the data in blocks of size Nsamples/4 (4096 is ~0.1 sec at 44,100 sample rate)
 
 In each case the smoothed PSD for a Nsamples section of data is calculated
-    1. The PSD is calculated via Welch’s method in subsets of 256 samples drawn from the Nsamples section under analysis
-    2. Detrend the PSD
-    3. Run savgol filter over the PSD twice
+1.  The PSD is calculated via Welch’s method in subsets of 256 samples drawn from the Nsamples section under analysis
+2.  Detrend the PSD
+3.  Run savgol filter over the PSD twice
+
+
 Then the smoothed background is subtracted and 
-    1.  the first 25 PSD values are set to 0 (high pass filter at about 400 hz)
-    2. any PSD values less than the mean of the background + 4 * standard deviation of background are set to zero
-This modified PSD is now analyzed for any peaks.
+1.  the first 25 PSD values are set to 0 (high pass filter at about 400 hz)
+2.  any PSD values less than the mean of the background + 4 * standard deviation of background are set to zero
+3.  This modified PSD is now analyzed for any peaks.
+
     1. The indices of peaks greater than 1 standard deviation of the PSD are determined
     2. Peaks closer together than 100 samples are merged together
     3. The mean and standard deviation of the difference between successive peaks is calculated
