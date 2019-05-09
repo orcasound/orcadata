@@ -1,4 +1,4 @@
-My current program for detecting calls in WAV  files   --  ValVeirs --            May 7, 2019
+My current program for detecting calls in WAV or in FLAC files   --  ValVeirs --            May 8, 2019
 
 This program detects calls by examining peaks in the power spectral density (PSD).  “Good” calls have a relatively long duration and relatively high PSD.
 
@@ -6,7 +6,7 @@ Reports look like this:
 
 fileName	startidx	stopidx	lencall	f0	sigma_f0	peak	sigma_peak
 
-
+One line for each detected call.  Other meta-data could be put in this line if we wish.
 
 The 'best' calls seem to be the ones with a long length (lencall in samples) and strong peaks (peak)
 
