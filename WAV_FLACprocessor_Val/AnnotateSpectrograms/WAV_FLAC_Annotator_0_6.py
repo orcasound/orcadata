@@ -19,7 +19,7 @@ import matplotlib
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
-import soundfile as sf
+
 from scipy import signal
 from scipy.io import wavfile
 from scipy.fftpack import fft
@@ -57,7 +57,7 @@ def toggle_selector(event):
         print(' Rect selector activated')
         toggle_selector.RS.active(True)
 
-###########  Read in wav file
+###########  Read in wav or flac file
 
 inWAV = eg.fileopenbox(default="/media/val/021109_2341/",filetypes=["*.WAV", "*.wav", "*.FLAC", "*.flac", "WAV or FLAC Files"])
 #inWAV = "/media/val/021109_2303/NATURE11_09_02_21_35_5101.wav" 
