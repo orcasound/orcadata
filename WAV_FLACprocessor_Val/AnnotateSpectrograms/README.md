@@ -18,11 +18,13 @@ or tap Cancel and then enter a blank into the filename field and tap open.
 Wait until the spectrogram is displayed
 Then draw your boxes and classify your selections.
    For call classification (C_...), I have been describing the frequency contours with letters such as:
-       u or U for upward a little or upward a lot
-       d or D for downward
-       c or C for staying constant for a short period or for a long period
-       w or W for wiggling
+       u or U for upward a little or upward a lot,
+       d or D for downward,
+       c or C for staying constant for a short period or for a long period,
+       w or W for wiggling.
+
    One could alternatively use the Ford Call Catalog descriptors  S_1 or S_19 etc.
+
    For ships and boat, make up something memorable!
 
 To quit the program, type a q or Q
