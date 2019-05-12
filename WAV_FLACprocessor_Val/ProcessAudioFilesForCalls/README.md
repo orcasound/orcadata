@@ -29,7 +29,7 @@ In each case the smoothed PSD for a Nsamples section of data is calculated
 3.  Run savgol filter over the PSD twice
 
 Then the smoothed background is subtracted and 
-1.  the first 25 PSD values are set to 0 (high pass filter at about 400 hz)
+1.  the first ~20-25 PSD values are set to 0 (high pass filter at 400 hz)
 2.  any PSD values less than the mean of the background + 4 * standard deviation of background are set to zero
 3.  This modified PSD is now analyzed for any peaks.
 
@@ -57,7 +57,7 @@ This program has the following free parameters:
 1. Size of fft input in samples (256)
 2. Size of block given to the Welch PSD algorithm (Nsamples= 4096)
 3. Size of step through the data (Nsamples/4)
-4. Cut for high pass filter of background subtracted and smoothed PSD (25 samples)
+4. Cut for high pass filter of background subtracted and smoothed PSD (400 hz)
 5. Cut for eliminating low amplitude peaks ( < mean peak height + 4 * height std. dev)
 6. Merge any close peaks, (peak indices difference  less than 100)
 
