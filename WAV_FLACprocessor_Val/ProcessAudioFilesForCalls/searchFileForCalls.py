@@ -87,7 +87,7 @@ def getDeltaf_PeakStats(y):
     return len(compressedIds),deltasMean,deltasStd,compressedIds
 
 
-def searchForCalls(thisAudioFile, callOutput, dirOutput):
+def searchFileForCalls(thisAudioFile, callOutput, dirOutput):
     global ampData
     global sampleRate
     global backgroundPSD
@@ -171,13 +171,18 @@ def searchForCalls(thisAudioFile, callOutput, dirOutput):
                 plt.xlim([0,8000])
                 plt.show()
         if gotCall and N_peaks >0:
+            #print('gotCall and max psd is',10*np.log10(np.max(psd[peaksIds])))
             callPeaks.append(np.max(psd[peaksIds]))
             callF0s.append(deltaf_PeakMean)
         if gotCall and N_peaks == 0:
             if DEBUG == 1:
                 print("=================Write to file",callStartIdx,idx,idx-callStartIdx)    
-            callOutput.write("%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n" % (outFileName,callStartIdx,idx, idx-callStartIdx, np.mean(callF0s), np.std(callF0s), 
-                                                       np.mean(callPeaks), np.std(callPeaks)))
+            stdCallPeaks = 0
+            if len(callPeaks) > 1:
+                stdCallPeaks = 10*np.log10(np.std(callPeaks))
+            callOutput.write("%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n" % (outFileName,callStartIdx,idx, 
+                  idx-callStartIdx, np.mean(callF0s), np.std(callF0s), 
+                  10*np.log10(np.mean(callPeaks)), stdCallPeaks))
             gotCall = False
             ycallLen.append(idx-callStartIdx)
             ycallPeak.append(np.mean(callPeaks))

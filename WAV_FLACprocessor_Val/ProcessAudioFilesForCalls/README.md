@@ -1,4 +1,4 @@
-My current program for detecting calls in WAV or in FLAC files   --  ValVeirs --            May 8, 2019
+My current program for detecting calls in WAV or in FLAC files   --  ValVeirs --            May 12, 2019
 
 This program detects calls by examining peaks in the power spectral density (PSD).  “Good” calls have a relatively long duration and relatively high PSD.
 
@@ -13,9 +13,11 @@ The 'best' calls seem to be the ones with a long length (lencall in samples) and
 
 The top level Python program is scanAudioFilesForCall.py
     1. This program sets up input directory for WAV files and for FLAC files and output directory for call report
-    2. Then is calls searchForCalls for each successive wav file
+    2. Typical command line: ./scanAudioFilesForCalls.py -i /home/val/callDetection/FLACs -o /home/val/callDetection/Calls
+          -i for directory holding input wav or flac files  -o for the directory where call data is written
+    3. Then the program calls searchFileForCalls for each successive wav file
 
-searchForCall.py is the main file that scans for calls.
+searchFileForCall.py is the main file that scans for calls.
 
 First, it reads in WAV or FLAC file.
 
@@ -26,7 +28,6 @@ In each case the smoothed PSD for a Nsamples section of data is calculated
 2.  Detrend the PSD
 3.  Run savgol filter over the PSD twice
 
-
 Then the smoothed background is subtracted and 
 1.  the first 25 PSD values are set to 0 (high pass filter at about 400 hz)
 2.  any PSD values less than the mean of the background + 4 * standard deviation of background are set to zero
@@ -36,6 +37,7 @@ Then the smoothed background is subtracted and
     2. Peaks closer together than 100 samples are merged together
     3. The mean and standard deviation of the difference between successive peaks is calculated
     4. This routine (getDeltaf_PeakStats) returns the number of peaks, the mean and std. Dev. of the separation of successive peaks (this may be the fundamental of harmonic signals) and also returns the the indices of the peaks.       
+
 Back in the main loop, the start of a ‘call’ is signified by having 1 or more peaks and a call continues while the number of peaks is greater than zero.
 
 At the end of a ‘call’ a line is written to an output file that contains the following:
@@ -43,12 +45,12 @@ At the end of a ‘call’ a line is written to an output file that contains the
     2. Call stop index
     3. Length of call in samples (2. - 1.)
     4. Mean and std. dev. of fundamental frequency of each of the PSD’s in this call
-    5. Mean and std. dev. of the maximum amplitude of each of the PSD’s in this call
+    5. Mean and std. dev. of the mean peak amplitude of each of the PSD’s in this call
 
 At the end of each WAV file, a graph is made and saved to the Call directory.  This graph has
     1. Blue lines show the number of peaks detected at each point in the WAV file
     2. Red dots indicate the length of a detected call
-    3. Blue dots indicate the maximum amplitude of peaks in the call
+    3. Blue dots indicate the mean peak amplitude of data blocks in the call
     4. All three of these outputs are normalized to a maximum of 1.0 so that they fit on the graph.
 
 This program has the following free parameters:
