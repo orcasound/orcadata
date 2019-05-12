@@ -12,10 +12,10 @@ The 'best' calls seem to be the ones with a long length (lencall in samples) and
 
 
 The top level Python program is scanAudioFilesForCall.py
-    1. This program sets up input directory for WAV files and for FLAC files and output directory for call report
-    2. Typical command line: ./scanAudioFilesForCalls.py -i /home/val/callDetection/FLACs -o /home/val/callDetection/Calls
+1. This program sets up input directory for WAV files and for FLAC files and output directory for call report
+2. Typical command line: ./scanAudioFilesForCalls.py -i /home/val/callDetection/FLACs -o /home/val/callDetection/Calls
           -i for directory holding input wav or flac files  -o for the directory where call data is written
-    3. Then the program calls searchFileForCalls for each successive wav file
+3. Then the program calls searchFileForCalls for each successive wav file
 
 searchFileForCall.py is the main file that scans for calls.
 
@@ -41,25 +41,25 @@ Then the smoothed background is subtracted and
 Back in the main loop, the start of a ‘call’ is signified by having 1 or more peaks and a call continues while the number of peaks is greater than zero.
 
 At the end of a ‘call’ a line is written to an output file that contains the following:
-    1. Call start index
-    2. Call stop index
-    3. Length of call in samples (2. - 1.)
-    4. Mean and std. dev. of fundamental frequency of each of the PSD’s in this call
-    5. Mean and std. dev. of the mean peak amplitude of each of the PSD’s in this call
+1. Call start index
+2. Call stop index
+3. Length of call in samples (2. - 1.)
+4. Mean and std. dev. of fundamental frequency of each of the PSD’s in this call
+5. Mean and std. dev. of the mean peak amplitude of each of the PSD’s in this call
 
 At the end of each WAV file, a graph is made and saved to the Call directory.  This graph has
-    1. Blue lines show the number of peaks detected at each point in the WAV file
-    2. Red dots indicate the length of a detected call
-    3. Blue dots indicate the mean peak amplitude of data blocks in the call
-    4. All three of these outputs are normalized to a maximum of 1.0 so that they fit on the graph.
+1. Blue lines show the number of peaks detected at each point in the WAV file
+2. Red dots indicate the length of a detected call
+3. Blue dots indicate the mean peak amplitude of data blocks in the call
+4. All three of these outputs are normalized to a maximum of 1.0 so that they fit on the graph.
 
 This program has the following free parameters:
-    1. Size of fft input in samples (256)
-    2. Size of block given to the Welch PSD algorithm (Nsamples= 4096)
-    3. Size of step through the data (Nsamples/4)
-    4. Cut for high pass filter of background subtracted and smoothed PSD (25 samples)
-    5. Cut for eliminating low amplitude peaks ( < mean peak height + 4 * height std. dev)
-    6. Merge any close peaks, (peak indices difference  less than 100)
+1. Size of fft input in samples (256)
+2. Size of block given to the Welch PSD algorithm (Nsamples= 4096)
+3. Size of step through the data (Nsamples/4)
+4. Cut for high pass filter of background subtracted and smoothed PSD (25 samples)
+5. Cut for eliminating low amplitude peaks ( < mean peak height + 4 * height std. dev)
+6. Merge any close peaks, (peak indices difference  less than 100)
 
 
 
