@@ -1,5 +1,7 @@
 My current program for detecting calls in WAV or in FLAC files   --  ValVeirs --            May 12, 2019
 
+This version scans wav and/or flac files that are in a LOCAL directory.
+
 This program detects calls by examining peaks in the power spectral density (PSD).  “Good” calls have a relatively long duration and relatively high PSD.
 
 Reports look like this:
@@ -11,7 +13,8 @@ One line for each detected call.  Other meta-data could be put in this line if w
 The 'best' calls seem to be the ones with a long length (lencall in samples) and strong peaks (peak)
 
 
-The top level Python program is scanAudioFilesForCall.py
+The top level Python program is scanLocalAudioFilesForCall.py
+
 1. This program sets up input directory for WAV files and for FLAC files and output directory for call report
 2. Typical command line: ./scanAudioFilesForCalls.py -i /home/val/callDetection/FLACs -o /home/val/callDetection/Calls
           -i for directory holding input wav or flac files  -o for the directory where call data is written
