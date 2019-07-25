@@ -10,8 +10,8 @@ importlib.reload(sff)
 """
 
 """
-dirWAVs = "/media/val/021109_2341/"           # folder with wav files
-dirOutput = "/home/val/WAVs/Calls"   # folder where output is placed
+dirWAVs = "/Users/scott/Dropbox/Sounds/SRKW-train-data"           # folder with wav files
+dirOutput = "/Users/scott/Dropbox/Sounds/SRKW-train-data/labels-Vveirs"   # folder where output is placed
 
 if dirWAVs.split('/') != '':   #Make sure directory has a final /
     dirWAVs += "/"
@@ -22,6 +22,8 @@ theWAVs = glob.glob(dirWAVs+"*.wav")
 theWAVs = theWAVs + glob.glob(dirWAVs+"*.WAV")
 
 print("num wavs",len(theWAVs))
+print("in dir", dirWAVs)
+print("in dir", dirOutput)
  
 
 
