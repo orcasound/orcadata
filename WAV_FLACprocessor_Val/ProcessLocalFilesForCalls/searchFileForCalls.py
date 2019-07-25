@@ -3,10 +3,12 @@
 """
 Created on Tue May  7 09:28:01 2019
 
+    flac files: To load soundfile first:  conda install -c conda-forge pysoundfile 
 @author: val
 """
 import numpy as np
-from scipy.io import wavfile
+
+import soundfile as sf
 from scipy.fftpack import fft, ifft, rfft
 from scipy.signal import  hann, find_peaks, peak_widths, peak_prominences
 from scipy import signal
@@ -85,7 +87,7 @@ def getDeltaf_PeakStats(y):
     return len(compressedIds),deltasMean,deltasStd,compressedIds
 
 
-def searchForCalls(thisWAV, callOutput, dirOutput):
+def searchFileForCalls(thisAudioFile, callOutput, dirOutput):
     global ampData
     global sampleRate
     global backgroundPSD
@@ -95,24 +97,25 @@ def searchForCalls(thisWAV, callOutput, dirOutput):
     DEBUG = 0
     
     Nsamples = 4096   #  anylize data in Nsamples chunks of 256 size fft groups (averages lots of noise out!)
-    outFileName = thisWAV.split(".")[0].split("/")[-1]   # save base WAV filename for outputs
-#  Read in WAV data
-    sampleRate, wavData = wavfile.read(thisWAV)
-    
+    outFileName = thisAudioFile.split(".")[0].split("/")[-1]   # save base WAV filename for outputs
+#  Read in WAV or FLAC data
+  
+    audioData, sampleRate = sf.read(thisAudioFile)
+
     ampData = []
 
-    if len(wavData.shape) > 1:
-        nChannels = wavData.shape[1]
-        ampData = wavData[:,0]  # select channel 0 (left or mono)
+    if len(audioData.shape) > 1:
+        nChannels = audioData.shape[1]
+        ampData = audioData[:,0]  # select channel 0 (left or mono)
     else:
         nChannels = 1
-        ampData = wavData
+        ampData = audioData
     meanAmpData = np.mean(np.fabs(ampData))
     stdAmpData = np.std(np.fabs(ampData))
     if DEBUG > 1:
-        print("processing",thisWAV)
+        print("processing",thisAudioFile)
         print("Sample rate",sampleRate)
-        print("shape",wavData.shape)
+        print("shape",audioData.shape)
         print("meanAmp",meanAmpData,"stdDev",stdAmpData)
     
 #initialize background PSD    Note Bene this could be done in a way to insure not using a possible call    
@@ -140,16 +143,20 @@ def searchForCalls(thisWAV, callOutput, dirOutput):
     callStartIdx = 0
     gotCall = False   # this flag will start a call when Npeaks > 0 and stop the call when Npeaks = 0,
     while not done:   #               then writing the start and stop indices to disk for this all
+        if DEBUG > 1:
+            print("idx is", idx,'of',len(ampData))
         f,psdraw = getSmoothedPSD(idx,idx+Nsamples)
         psd = psdraw - backgroundPSD
         psd[0:25:1] = 0
         psd[psd < backgroundMean + 4*backgroundSigma] = 0
     
         N_peaks, deltaf_PeakMean, deltaf_PeakStd, peaksIds = getDeltaf_PeakStats(psd)
+        if DEBUG > 1:
+            print("Npeaks =", N_peaks)
         ratio = 0
         if deltaf_PeakStd > 0:
             ratio = deltaf_PeakMean/deltaf_PeakStd
-        if DEBUG > 1:
+        if DEBUG == 1:
             print(idx, "N_peaks=",N_peaks, ratio, gotCall, deltaf_PeakMean, callStartIdx,"....................")    
         if N_peaks > 0:    
             if not gotCall:
@@ -164,13 +171,18 @@ def searchForCalls(thisWAV, callOutput, dirOutput):
                 plt.xlim([0,8000])
                 plt.show()
         if gotCall and N_peaks >0:
+            #print('gotCall and max psd is',10*np.log10(np.max(psd[peaksIds])))
             callPeaks.append(np.max(psd[peaksIds]))
             callF0s.append(deltaf_PeakMean)
         if gotCall and N_peaks == 0:
-            if DEBUG >1:
+            if DEBUG == 1:
                 print("=================Write to file",callStartIdx,idx,idx-callStartIdx)    
-            callOutput.write("%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n" % (outFileName,callStartIdx,idx, idx-callStartIdx, np.mean(callF0s), np.std(callF0s), 
-                                                       np.mean(callPeaks), np.std(callPeaks)))
+            stdCallPeaks = 0
+            if len(callPeaks) > 1:
+                stdCallPeaks = 10*np.log10(np.std(callPeaks))
+            callOutput.write("%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n" % (outFileName,callStartIdx,idx, 
+                  idx-callStartIdx, np.mean(callF0s), np.std(callF0s), 
+                  10*np.log10(np.mean(callPeaks)), stdCallPeaks))
             gotCall = False
             ycallLen.append(idx-callStartIdx)
             ycallPeak.append(np.mean(callPeaks))
