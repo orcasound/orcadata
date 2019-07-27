@@ -25,6 +25,14 @@ No credentials are necessary to connect to the publicly accessible buckets, just
 
 `aws --no-sign-request s3 ls streaming-orcasound-net`
 
+To access machine learning resources, try:
+
+`aws --no-sign-request s3 ls s3://acoustic-sandbox`
+
+And to download an ML test-set, try:
+
+`aws --no-sign-request s3 sync s3://acoustic-sandbox/labeled-data/killer-whales/southern-residents/20190705/orcasound-lab/ .`
+
 # Available buckets
 
 | Bucket                      | Description               |
