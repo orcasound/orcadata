@@ -2,6 +2,7 @@
 Development of bioacoustic analytical tools for both humans (citizen/scientists) and machines (algorithms) to process Orcasound data -- either post-processing of archived raw FLAC files or real-time analyis of the lossy stream and/or FLAC files. The long-term goal is to promote a friendly competition between humans and machines that leads to synergistic real-time, cloud-based processing of acoustic data.
 
 Resources:
+* [Orcasound orcadata wiki](https://github.com/orcasound/orcadata/wiki/Orcadata-wiki) - updated activity & resources maintained by the community
 * [Data for Good tarball of sound samples](http://orcasound.net/data4good)
 
 Resources to develop:
@@ -9,6 +10,7 @@ Resources to develop:
 Archive of signals, noise, and empirical data for machine learning and teaching human listeners
 * Example of Orcasound FLAC files (48, 96, 192 kHz)
 * Guidance on how to access S3 buckets (CLI and/or Cloud9)
+  * [AWS CLI set-up and syntax](https://github.com/orcasound/orcadata/blob/master/access.md) -- access public Orcasound S3 buckets
 
 Overview of AWS tools and plan(s) for utilizing them
 * EC2
