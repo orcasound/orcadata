@@ -37,16 +37,18 @@ class AcousticModel(BaseModel):
         batch = loader.batch_size
         yhat_all = np.empty([len(loader)*batch,self.m])
         y_all = np.empty([len(loader)*batch,self.m])
-        for i, (x,y) in enumerate(loader):
-            x,y = self.prepare_data(x,y)
-            yhat = self(x,y)
-            yhat_all[i*batch:i*batch+x.shape[0]] = yhat.detach().cpu().numpy()
-            y_all[i*batch:i*batch+x.shape[0]] = y.detach().cpu().numpy()
 
-        # remove unusued allocated prediction space if there's an incomplete final batch
-        if batch - x.shape[0] > 0:
-            yhat_all = yhat_all[:x.shape[0]-batch]
-            y_all = y_all[:x.shape[0]-batch]
+        with self.iterate_averaging():
+            for i, (x,y) in enumerate(loader):
+                x,y = self.prepare_data(x,y)
+                yhat = self(x,y)
+                yhat_all[i*batch:i*batch+x.shape[0]] = yhat.detach().cpu().numpy()
+                y_all[i*batch:i*batch+x.shape[0]] = y.detach().cpu().numpy()
+
+            # remove unusued allocated prediction space if there's an incomplete final batch
+            if batch - x.shape[0] > 0:
+                yhat_all = yhat_all[:x.shape[0]-batch]
+                y_all = y_all[:x.shape[0]-batch]
 
         return yhat_all,y_all
 
