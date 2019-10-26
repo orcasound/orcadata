@@ -21,17 +21,13 @@ You may also be able to use a package manager such as `homebrew` or `apt-get`. O
 
 # Connecting to the buckets
 
-No credentials are necessary to connect to the publicly accessible buckets, just use the `--no-sign-request` flag instead. For example, the command to access the lossy compressed audio stream segments in the `streaming-orcasound-net` bucket is:
+No credentials are necessary to connect to the publicly accessible buckets, just use the `--no-sign-request` flag instead. For example, the command to access the lossy compressed audio stream segments (HLS format) in the `streaming-orcasound-net` bucket is:
 
 `aws --no-sign-request s3 ls streaming-orcasound-net`
 
-To access machine learning resources, try:
+For nodes that have sufficent bandwidth, the lossless compressed audio data (FLAC format) can by found in the `archive-orcasound-net` bucket here: 
 
-`aws --no-sign-request s3 ls s3://acoustic-sandbox`
-
-And to download an ML test-set, try:
-
-`aws --no-sign-request s3 sync s3://acoustic-sandbox/labeled-data/classification/killer-whales/southern-residents/20190705/orcasound-lab/ .`
+`aws --no-sign-request s3 ls archive-orcasound-net`
 
 # Available buckets
 
@@ -42,3 +38,9 @@ And to download an ML test-set, try:
 | archive-orcasound-net       | Lossless compressed data  |
 | dev-archive-orcasound-net   | Lossless compressed data  |
 | acoustic-sandbox            | Machine learning space    | 
+
+
+# Accessing machine learning resources
+
+The same AWS CLI tool can be used to acquire training and testing data if you're interested in developing machine learning algorithms. Please refer to the [Orcadata wiki](https://github.com/orcasound/orcadata/wiki/Orcadata-wiki) for futher information.
+
