@@ -31,7 +31,7 @@ To access machine learning resources, try:
 
 And to download an ML test-set, try:
 
-`aws --no-sign-request s3 sync s3://acoustic-sandbox/labeled-data/killer-whales/southern-residents/20190705/orcasound-lab/ .`
+`aws --no-sign-request s3 sync s3://acoustic-sandbox/labeled-data/classification/killer-whales/southern-residents/20190705/orcasound-lab/ .`
 
 # Available buckets
 
