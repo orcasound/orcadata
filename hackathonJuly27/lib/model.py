@@ -9,7 +9,7 @@ import torch
 class BaseModel(torch.nn.Module):
     checkpoint_dir = 'checkpoints'
 
-    def __init__(self, checkpoint, init=False, weight_scale=0, avg=.999):
+    def __init__(self, checkpoint, init=False, weight_scale=0, avg=.999, pytorch_init=False):
         super().__init__()
 
         self.cp = os.path.join(self.checkpoint_dir, checkpoint)
@@ -31,9 +31,10 @@ class BaseModel(torch.nn.Module):
         self.define_graph()
         self.cuda()
 
-        for parm in self.parameters():
-            if weight_scale == 0: parm.data.fill_(0)
-            else: parm.data.normal_(0, weight_scale)
+        if not pytorch_init:
+            for parm in self.parameters():
+                if weight_scale == 0: parm.data.fill_(0)
+                else: parm.data.normal_(0, weight_scale)
 
         self.avg = avg
         for module in self.modules():
@@ -50,12 +51,13 @@ class BaseModel(torch.nn.Module):
     @contextmanager
     def iterate_averaging(self):
         self.eval()
-        orig_parms = copy.deepcopy(list(parm.data for parm in self.parameters()))
-        for name,parm in self.named_parameters():
-            parm.data.copy_(self.state_dict()[name + '_avg'])
+        # this doesn't play well with batchnorm?
+        #orig_parms = copy.deepcopy(list(parm.data for parm in self.parameters()))
+        #for name,parm in self.named_parameters():
+        #    parm.data.copy_(self.state_dict()[name + '_avg'])
         yield
-        for parm, orig in zip(self.parameters(), orig_parms):
-            parm.data.copy_(orig)
+        #for parm, orig in zip(self.parameters(), orig_parms):
+        #    parm.data.copy_(orig)
         self.train()
 
     def initialize(self):
