@@ -16,11 +16,12 @@ def _worker_init(args):
 worker_config = {'num_workers': 4, 'pin_memory': True, 'worker_init_fn': _worker_init}
 
 class OrcaDataset(data.Dataset):
-    def __init__(self, root, train=True, normalize=True, window=16384, pitch_shift=0, jitter=0., stride=512, split=25*60, collapse_labels=True):
+    def __init__(self, root, train=True, normalize=True, window=16384, translate=False, pitch_shift=0, jitter=0., stride=512, split=25*60, collapse_labels=True):
         self.normalize = normalize
         self.window = window
         self.pitch_shift = pitch_shift
         self.jitter = jitter
+        self.translate = translate
         self.stride = stride
         self.m = len(['call','buzz','whistle'])
         self.collapse_labels = collapse_labels
@@ -78,7 +79,7 @@ class OrcaDataset(data.Dataset):
         if i >= len(self): raise IndexError
 
         shift = 0
-        if self.pitch_shift> 0:
+        if self.pitch_shift > 0:
             shift = np.random.randint(-self.pitch_shift,self.pitch_shift)
 
         jitter = 0.
@@ -86,7 +87,7 @@ class OrcaDataset(data.Dataset):
             jitter_amount = np.random.uniform(-self.jitter,self.jitter)
 
         s = i*self.stride
-        #s += np.random.randint(self.stride)
+        if self.translate: s += np.random.randint(self.stride)
         return self.access(s,shift,jitter)
 
     def __len__(self):
