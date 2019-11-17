@@ -20,7 +20,11 @@ class AcousticModel(BaseModel):
         self.register_statistic('loss_tr',True,'{:<8.3f}')
 
     def loss(self, yhat, y):
-        return F.mse_loss(yhat, y)/2.
+        return F.binary_cross_entropy(yhat, y)
+#         print(yhat.shape)
+#         print(y.shape)
+#         exit()
+        #return F.mse_loss(yhat, y)/2.
 
     def prepare_data(self, x, y):
         # ship everything over to the gpu
@@ -28,7 +32,10 @@ class AcousticModel(BaseModel):
 
     def compute_stats(self, loader):
         yhat,y = self.predict_all(loader)
-        loss = ((yhat-y)**2).mean()/2.
+#         print(yhat.shape)
+#         print(y.shape)
+        loss = self.loss(torch.Tensor(yhat),torch.Tensor(y))
+        #loss = ((yhat-y)**2).mean()/2.
         avp = average_precision_score(y.ravel(),yhat.ravel(),average=None)
         return loss, avp
 
