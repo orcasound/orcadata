@@ -7,7 +7,7 @@ There are three types of buckets, two of which have live and dev versions:
 1. Archive -- lossless compressed data for nodes with sufficient bandwidth (FLAC format)
 1. Sandboxes -- data sets for machine learning and other analyses
 
-The two verions of the streaming bucket support three verions of the Orcasound app (as depicted in this evolution model): dev-streaming-orcasound-net is for end-to-end tests where the audio source is stable/known; and streaming-orcasound-net is both for beta-testing new app features with realistic audio data from existing nodes and for the public production version at live.orcasound.net
+The two versions of the streaming bucket support three versions of the Orcasound app (as depicted in this evolution model): dev-streaming-orcasound-net is for end-to-end tests where the audio source is stable/known; and streaming-orcasound-net is both for beta-testing new app features with realistic audio data from existing nodes and for the public production version at live.orcasound.net
 
 ![Orcasound software evolution model](http://orcasound.net/img/orcasound-app/Orcasound-software-evolution-model.png)
 
