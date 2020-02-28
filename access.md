@@ -45,5 +45,5 @@ To learn how to use the AWS CLI to download Orcasound data, please see [Using Am
 
 # Accessing machine learning resources
 
-The AWS CLI can be used to acquire training and testing data if you're interested in developing machine learning algorithms. Please refer to the [Orcadata wiki](https://github.com/orcasound/orcadata/wiki/Orcadata-wiki) for futher information.
+The AWS CLI can be used to acquire training and testing data if you're interested in developing machine learning algorithms. Please refer to the [Orcadata wiki](https://github.com/orcasound/orcadata/wiki) for futher information.
 
