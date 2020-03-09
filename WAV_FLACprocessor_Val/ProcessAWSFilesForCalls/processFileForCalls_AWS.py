@@ -7,7 +7,7 @@ Created on Tue May  7 09:28:01 2019
 @author: val
 """
 import numpy as np
-
+import matplotlib.pyplot as plt
 import soundfile as sf
 from scipy.fftpack import fft, ifft, rfft
 from scipy.signal import  hann, find_peaks, peak_widths, peak_prominences
