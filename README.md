@@ -5,7 +5,7 @@ This repository is for the development of bioacoustic analytical tools for both 
 Each node of the Orcasound hydrophone network streams audio data to AWS S3 data buckets, all of which are open-access. If you would like [to access data, read the access.md file](https://github.com/orcasound/orcadata/blob/master/access.md).
 
 ## Resources:
-* [Orcasound orcadata wiki](https://github.com/orcasound/orcadata/wiki/Orcadata-wiki) - updated activity & resources maintained by the community
+* [Orcasound orcadata wiki](https://github.com/orcasound/orcadata/wiki) - updated activity & resources maintained by the community
 * [Data for Good tarball of sound samples](http://orcasound.net/data4good)
 
 ## Resources to develop:
