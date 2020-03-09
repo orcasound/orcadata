@@ -1,13 +1,13 @@
 # Overview
 
-Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both public list and public read enabled, which means you can use the AWS API to connect directly to the buckets, list the available files, and download them without any special credentials.
+Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both the public list and public read enabled, which means you can use the AWS API to connect directly to the buckets, list the available files, and download them without any special credentials.
 
 There are three types of buckets, two of which have live and dev versions: 
 1. Streaming -- lossy compressed data for live listening (e.g. HLS and/or DASH)
 1. Archive -- lossless compressed data for nodes with sufficient bandwidth (FLAC format)
 1. Sandboxes -- data sets for machine learning and other analyses
 
-The two versions of the streaming bucket support three versions of the Orcasound app (as depicted in this evolution model): dev-streaming-orcasound-net is for end-to-end tests where the audio source is stable/known; and streaming-orcasound-net is both for beta-testing new app features with realistic audio data from existing nodes and for the public production version at live.orcasound.net
+The two versions of the streaming bucket support three versions of the Orcasound app (as depicted in this evolution model): dev-streaming-orcasound-net is for end-to-end tests where the audio source is stable/known, and streaming-orcasound-net is both for beta-testing new app features with realistic audio data from existing nodes and for the public production version at live.orcasound.net
 
 ![Orcasound software evolution model](http://orcasound.net/img/orcasound-app/Orcasound-software-evolution-model.png)
 
@@ -25,7 +25,7 @@ No credentials are necessary to connect to the publicly accessible buckets, just
 
 `aws --no-sign-request s3 ls streaming-orcasound-net`
 
-For nodes that have sufficent bandwidth, the lossless compressed audio data (FLAC format) can by found in the `archive-orcasound-net` bucket here: 
+For nodes that have sufficient bandwidth, the lossless compressed audio data (FLAC format) can be found in the `archive-orcasound-net` bucket here: 
 
 `aws --no-sign-request s3 ls archive-orcasound-net`
 
@@ -45,5 +45,5 @@ To learn how to use the AWS CLI to download Orcasound data, please see [Using Am
 
 # Accessing machine learning resources
 
-The AWS CLI can be used to acquire training and testing data if you're interested in developing machine learning algorithms. Please refer to the [Orcadata wiki](https://github.com/orcasound/orcadata/wiki) for futher information.
+The AWS CLI can be used to acquire training and testing data if you're interested in developing machine learning algorithms. Please refer to the [Orcadata wiki](https://github.com/orcasound/orcadata/wiki) for further information.
 
