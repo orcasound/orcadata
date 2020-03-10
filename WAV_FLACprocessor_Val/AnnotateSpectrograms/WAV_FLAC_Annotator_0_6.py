@@ -53,10 +53,10 @@ def toggle_selector(event):
     print(' Key pressed.', event.key)
     if event.key in ['Q', 'q'] and toggle_selector.RS.active:
         print('Rect selector deactivated')
-        toggle_selector.RS.active(False)
+        toggle_selector.RS.active = False
     if event.key in ['A', 'a'] and not toggle_selector.RS.active:
         print(' Rect selector activated')
-        toggle_selector.RS.active(True)
+        toggle_selector.RS.active = True
 
 ###########  Read in wav or flac file
 
