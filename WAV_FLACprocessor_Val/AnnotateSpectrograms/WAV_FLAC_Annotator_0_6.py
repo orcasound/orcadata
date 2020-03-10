@@ -92,7 +92,10 @@ spec = np.zeros([NfreqBins,NfftChunks])
 i=0
 maxSpec = 0;
 while idx < Ndata-Nsamples-1:
-    y = data[idx:idx+Nsamples][0:,1]  ####  Note Bene  here we extract the first channel of 1 -> N channels
+    if data.ndim == 1:
+        y = data[idx:idx+Nsamples]
+    else:
+        y = data[idx:idx+Nsamples][0:,1]  ####  Note Bene  here we extract the first channel of 1 -> N channels
     yf = fft(y)
     idx = idx+Nskip
 #    for j in range(0,5):
