@@ -16,6 +16,7 @@ WAV_Annotator  V 0.1
 
 """
 import matplotlib
+import soundfile as sf
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
