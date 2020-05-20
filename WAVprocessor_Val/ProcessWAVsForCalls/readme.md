@@ -31,7 +31,7 @@ pklDirectory = "/home/val/Documents/machineLearning/NN_files/dataForNN/pklFiles/
 ####				Note that the pkl files are stored in the obj folder in here
 
 ## User parameters:
-Nfft = 512		#resolution of initial psd calculation
+`Nfft = 512		#resolution of initial psd calculation
 n_slices = 80		#number of time segments in spectrogram (number of ‘pixels’ along the x-axis)
 n_bands = 80		#number of frequency segments in spectrogram (number of ‘pixels’ along y)
 f_low = 400		#low frequency cutoff 
@@ -41,7 +41,7 @@ n_specsPerLabel = 4	#number of spectrograms randomly calculated around labelled 
 logFrequency = False 	#True here integrates psd into n_bands logarithmic between f_low and f_high
 removeClicks = True  	#simple click remover is applied to wav file data before psd calculation
 showPlots = True        #show spectrograms 
-pauseAtEachPlot = True  #wait for user after each plot
+pauseAtEachPlot = True  #wait for user after each plot`
 
 
 # Python script:  displayValsSpectrograms.py 
