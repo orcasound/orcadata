@@ -49,3 +49,5 @@ pauseAtEachPlot = True  #wait for user after each plot
 # Python script:  displayValsSpectrograms.py 
 A program to display image representations of stored spectrograms.
 
+# Python script:  constructStereoAnnotationWavs.py
+A program to read an expert's annotation and display these on one channel of stereo file
