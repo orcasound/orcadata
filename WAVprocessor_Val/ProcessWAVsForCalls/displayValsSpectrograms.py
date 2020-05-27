@@ -16,7 +16,6 @@ import pickle
 #### Directory where the pickled spectrograms and associated metadata will be stored
 pklDirectory = "/home/val/Documents/machineLearning/NN_files/dataForNN/pklFiles/"  
 
-
 def save_obj(obj, name ):
     print("in save_obj_",os.getcwd(),name)
     with open('obj/'+ name + '.pkl', 'wb') as f:
@@ -71,8 +70,8 @@ def plotArray(theTitle, z):
     
 os.chdir(pklDirectory) 
     
-signalArrayList = load_obj("signalArrayList_80x80_400to10000_3.0sec")  # Note: don't include the .pkl in the file name
-signalLabelList = load_obj("signalLabelList_80x80_400to10000_3.0sec")  
+signalArrayList = load_obj("spectrogramArrayList_80x80_400to10000_3.0sec")  # Note: don't include the .pkl in the file name
+signalLabelList = load_obj("spectrogramLabelList_80x80_400to10000_3.0sec")  
 
 n_bands = 80
 n_slices = 80
@@ -80,10 +79,11 @@ n_slices = 80
 for i in range(len(signalArrayList)):
   signal = signalArrayList[i]
   label  = signalLabelList[i]
+
   exStop = label.start_time_s + label.duration_s
   winStart = label.window_start_idx / label.sampleRate
   winStop =  label.window_stop_idx / label.sampleRate
-  title = "Signal: %s\n%s\nExpert %0.1f,%0.1f Display %0.1f,%0.1f" % (label.wav_filename, label.spectrogramType,label.start_time_s, exStop, winStart, winStop)
+  title = "%s\n%s\nExpert %0.1f,%0.1f Display %0.1f,%0.1f" % (label.wav_filename, label.spectrogramType,label.start_time_s, exStop, winStart, winStop)
   plotArray(title,signal)
   key = input("<Enter> to continue, q<Enter> to quit")
   if key == 'q' or key == 'Q':
