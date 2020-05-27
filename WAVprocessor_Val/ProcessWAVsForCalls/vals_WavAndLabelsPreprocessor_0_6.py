@@ -19,6 +19,7 @@ from scipy.signal import welch
 import soundfile as sf
 import pydub   #  this is just to be able to read mp3 files
 import pickle
+import copy
 
 import sys
 
@@ -436,10 +437,10 @@ def getSpectrogram(target, priorFile, theWavData):
 #######################################################################################
 ##############  EXECUTION STARTS HERE ################################################
 
-DEBUG = 0
+DEBUG = 10
 
 nWavPts4ary = 0
-nPsdPts = 0
+nPsdPts = 10
 expertLabelList = []
 rightNow = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 with open(labelFilename) as elf:
@@ -450,26 +451,35 @@ with open(labelFilename) as elf:
       items = line.split(",")
       if items[2] != '0':  # skip any experts' record which has a duration_s value = ZERO
                                          #  filename,    start,      duration,        loc,      thisClass,   Nfft, sampleRate, n_bands, n_slices, flow, fhigh, dt, rmclicks, logScale, thisDate)        
-        expertLabelList.append(acousticLabel(items[0],float(items[1]),float(items[2]),items[3], thisExpertClass,Nfft, 0, n_bands, n_slices, f_low, f_high, deltaT, removeClicks, logFrequencyScale,rightNow))
+        nextRecord = acousticLabel(items[0],float(items[1]),float(items[2]),items[3], thisExpertClass,Nfft, 0, n_bands, n_slices, f_low, f_high, deltaT, removeClicks, logFrequencyScale,rightNow)
+        expertLabelList.append(nextRecord)
+        if cnt<10:
+          print(nextRecord.start_time_s)
+          print(line)
 print("number of labels =",cnt)  
 
 backgroundLabelList = []
 
+priorWav = ""
 for cnt, lbl in enumerate(expertLabelList):  # build list of background intervals between expert labels
-  if cnt ==0:
+  if lbl.wav_filename != priorWav:
     lblPrior = lbl  # initialize
+    priorWav = lbl.wav_filename
+    bgStart_s = 0
   else:
-    bgStart_s = lblPrior.start_time_s + lblPrior.start_time_s + lblPrior.duration_s + deltaT  # start at one window width after prior expert notation
-    bgStop_s  = lbl.start_time_s - deltaT    # stop one window width before next notation
-    if bgStop_s - bgStart_s > deltaT:
-      if cnt< 10:
-        print("background start stop",bgStart_s, bgStop_s)
-      bgLbl = lbl    # initialize background label to expert lable
-      bgLbl.start_time_s = (bgStop_s + bgStart_s)/2 - deltaT/2    # put background midway between expert notations
-      bgLbl.duration_s   = deltaT
-      bgLbl.objectClass = 'Background'
-      backgroundLabelList.append(bgLbl)
-      
+    bgStart_s = lblPrior.start_time_s + lblPrior.duration_s + deltaT  # start at one window width after prior expert notation
+  bgStop_s  = lbl.start_time_s - deltaT    # stop one window width before next notation
+
+  if bgStop_s - bgStart_s > deltaT:
+
+    bgLbl = copy.deepcopy(lbl)    # initialize background label to expert lable
+    bgLbl.start_time_s = (bgStop_s + bgStart_s)/2 - deltaT/2    # put background midway between expert notations
+    bgLbl.duration_s   = deltaT
+    bgLbl.objectClass = 'Background'
+    backgroundLabelList.append(bgLbl)
+  
+  lblPrior = lbl
+   
   
 
 
@@ -493,7 +503,7 @@ for cnt, exLabel in enumerate(backgroundLabelList):   ##########  Main processin
     if inkey == 'q' or inkey == 'Q':
       break
     
-  if DEBUG == 1 and cnt == 10:     ######################################  jump out of loop for debugging
+  if DEBUG == 10 and cnt == 5:     ######################################  jump out of loop for debugging
     break
 
 for cnt, exLabel in enumerate(expertLabelList):   ##########  Main processing loop ####################################
@@ -508,13 +518,13 @@ for cnt, exLabel in enumerate(expertLabelList):   ##########  Main processing lo
     if inkey == 'q' or inkey == 'Q':
       break
     
-  if DEBUG == 1 and cnt == 10:     ######################################  jump out of loop for debugging
+  if DEBUG == 10 and cnt == 5:     ######################################  jump out of loop for debugging
     break
   
-if DEBUG == 1: 
+if DEBUG == 10: 
   print("list start and stop signal file indices")
   for cnt, sig in enumerate(spectrogramLabelList):
-    print(sig.wav_filename,sig.window_start_idx, sig.window_stop_idx)
+    print(sig.wav_filename,sig.objectClass,sig.start_time_s, sig.duration_s)
   
 os.chdir(pklDirectory) 
 loc = wavFileDirectory.split('/')[-2]
