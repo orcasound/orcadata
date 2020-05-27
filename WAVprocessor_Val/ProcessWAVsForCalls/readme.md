@@ -1,17 +1,17 @@
-# vals_WavAndLabelsPreprocessor_0_5.py
-## Version 0.5 - May 20, 2020
+# vals_WavAndLabelsPreprocessor_0_6.py
+## Version 0.6 - May 27, 2020
 
 ## Val’s WAV and Labels Preprocessor demonstrates selecting labeled segments of WAV files, calculating the power spectral density for these segments, compressing the frequency spectrum into a selected range with a selected spectral resolution.  The amplitude to the psd in the final compressed spectrogram is normalized to a maximum of 1.  The frequency scale can be linear or may be set to be logarithmic.  The time axis is sampled to cover as selected time interval with a selected number of power spectral density segments.
 
 ### To be added
 Each labeled segment is sampled at a selected number of time intervals close to the labeled time.  This generates spectrograms with the signal at a number of randomly selected times close to the labeled time.
-### To be added
-In addition, an equal number of ‘background’ spectrograms are computed at times randomly selected between the times of labeled segments.
+
+‘background’ spectrograms are computed at times between the times of labeled segments.
  
 The final spectrograms are stored (pickled) in binary form as numpy arrays.
 	Note: these are stored in the obj folder in the pkl directory
 
-# Python script:  ValsWavAndLabelsPreprocessor_0.5.py
+# Python script:  ValsWavAndLabelsPreprocessor_0.6.py
 
 Here are parameters users may set:
 
