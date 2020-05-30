@@ -341,7 +341,13 @@ class acousticLabel(object):
     self.removeClicks = rmclicks
     self.processingDate = thisDate
     
-
+#########################################################################################
+def buildBackgroundLabel(lbl, start_s, duration_s, backgroundLabelList):
+    bgLbl = copy.deepcopy(lbl)    # initialize background label to expert lable
+    bgLbl.start_time_s = start_s
+    bgLbl.duration_s   = duration_s
+    bgLbl.objectClass = 'Background'
+    backgroundLabelList.append(bgLbl)
 ##########################################################################################
 def getSpectrogram(target, priorFile, theWavData):
   global nPsdPts, nWavPts4ary, deltaT, sampleRate, n_slices, n_bands, f_low, f_high, priorStartTime
@@ -437,7 +443,7 @@ def getSpectrogram(target, priorFile, theWavData):
 #######################################################################################
 ##############  EXECUTION STARTS HERE ################################################
 
-DEBUG = 10
+DEBUG = 0
 
 nWavPts4ary = 0
 nPsdPts = 10
@@ -456,12 +462,13 @@ with open(labelFilename) as elf:
         if cnt<10:
           print(nextRecord.start_time_s)
           print(line)
-print("number of labels =",cnt)  
+print("number of expert labels =",cnt)  
 
 backgroundLabelList = []
 
 priorWav = ""
 for cnt, lbl in enumerate(expertLabelList):  # build list of background intervals between expert labels
+  
   if lbl.wav_filename != priorWav:
     lblPrior = lbl  # initialize
     priorWav = lbl.wav_filename
@@ -469,20 +476,18 @@ for cnt, lbl in enumerate(expertLabelList):  # build list of background interval
   else:
     bgStart_s = lblPrior.start_time_s + lblPrior.duration_s + deltaT  # start at one window width after prior expert notation
   bgStop_s  = lbl.start_time_s - deltaT    # stop one window width before next notation
-
-  if bgStop_s - bgStart_s > deltaT:
-
-    bgLbl = copy.deepcopy(lbl)    # initialize background label to expert lable
-    bgLbl.start_time_s = (bgStop_s + bgStart_s)/2 - deltaT/2    # put background midway between expert notations
-    bgLbl.duration_s   = deltaT
-    bgLbl.objectClass = 'Background'
-    backgroundLabelList.append(bgLbl)
-  
+  print(cnt,lbl.wav_filename,"lblStart",lbl.start_time_s,"priorLblStart",lblPrior.start_time_s,"bkgnd",bgStart_s,bgStop_s)
+  dtBack = deltaT/4  # size of gap between calls and backs and between backs and backs
+  if bgStop_s - bgStart_s > 3*dtBack:  # only take backgrounds that are at least one deltaT window away from notations
+    Nback = int((bgStop_s - bgStart_s)/(2*dtBack))
+    for i in range(Nback):
+      startT = bgStart_s+ dtBack + 2*dtBack*i
+      print(".................", i, bgStart_s,startT,bgStop_s)
+      buildBackgroundLabel(lbl, startT, deltaT, backgroundLabelList) 
   lblPrior = lbl
-   
+print("number of background intervals =",len(backgroundLabelList))   
   
-
-
+input("?????")
 ###############################################################
 spectrogramArrayList = []
 spectrogramLabelList = []
