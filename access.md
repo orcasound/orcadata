@@ -26,7 +26,11 @@ No credentials are necessary to connect to the publicly accessible buckets, just
 `aws --no-sign-request s3 ls streaming-orcasound-net`
 
 *Example:*
-If you take a look at the live stream for a particular node using the network tab of your browser's development console, you may be able to note the URL of the audio data segments. From that URL, you should be able to derive variable $1 -- the node name (one string with underscores, e.g. bush_point) and variable $2 --  the UNIX timestamp of desired S3 folder within the node's `hls` folder. Then you can construct a command like this to download all the available data for that period:
+If you [Orcasound web app network console data URL](http://orcasound.net/data/git/Orcasound-web-app-network-console-data-URL.png "take a look at the live stream for a particular node using the network tab of your browser's development console"), you may be able to note the URL of the audio data segments. 
+
+[Orcasound web app network console data URL](http://orcasound.net/data/git/Orcasound-web-app-network-console-data-URL.png "take a look at the live stream for a particular node using the network tab of your browser's development console")
+
+From that URL, you should be able to derive variable $1 -- the node name (one string with underscores, e.g. bush_point) and variable $2 --  the UNIX timestamp of desired S3 folder within the node's `hls` folder. Then you can construct a command like this to download all the available data for that period:
 
 `aws s3 sync s3://streaming-orcasound-net/rpi_$1/hls/$2/ .` generally or in this case of Bush Point in the evening of 27 Sep 2020 -- 
 `aws s3 sync s3://streaming-orcasound-net/rpi_bush_point/hls/1601253021/ .`
