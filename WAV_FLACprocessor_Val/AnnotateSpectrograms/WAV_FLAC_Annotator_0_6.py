@@ -16,6 +16,7 @@ WAV_Annotator  V 0.1
 
 """
 import matplotlib
+import soundfile as sf
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
@@ -52,10 +53,10 @@ def toggle_selector(event):
     print(' Key pressed.', event.key)
     if event.key in ['Q', 'q'] and toggle_selector.RS.active:
         print('Rect selector deactivated')
-        toggle_selector.RS.active(False)
+        toggle_selector.RS.active = False
     if event.key in ['A', 'a'] and not toggle_selector.RS.active:
         print(' Rect selector activated')
-        toggle_selector.RS.active(True)
+        toggle_selector.RS.active = True
 
 ###########  Read in wav or flac file
 
@@ -91,7 +92,10 @@ spec = np.zeros([NfreqBins,NfftChunks])
 i=0
 maxSpec = 0;
 while idx < Ndata-Nsamples-1:
-    y = data[idx:idx+Nsamples][0:,1]  ####  Note Bene  here we extract the first channel of 1 -> N channels
+    if data.ndim == 1:
+        y = data[idx:idx+Nsamples]
+    else:
+        y = data[idx:idx+Nsamples][0:,1]  ####  Note Bene  here we extract the first channel of 1 -> N channels
     yf = fft(y)
     idx = idx+Nskip
 #    for j in range(0,5):
