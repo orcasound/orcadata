@@ -2,7 +2,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from sklearn.metrics import precision_recall_curve
-from sklearn.utils.fixes import signature
+from funcsigs import signature
 
 def plot_pr_curve(y,yhat):
     precision,recall,_ = precision_recall_curve(y.ravel(), yhat.ravel())
