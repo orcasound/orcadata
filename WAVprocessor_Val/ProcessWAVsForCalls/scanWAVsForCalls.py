@@ -4,7 +4,7 @@ import glob
 from datetime import datetime
 import time
 import numpy as np
-import searchForCalls as sff
+import searchFileForCalls as sff
 import importlib
 importlib.reload(sff)
 """
@@ -34,7 +34,7 @@ callOutput.write("fileName\tstartidx\tstopidx\tlencall\tf0\tsigma_f0\tpeak\tsigm
 cnt = 0
 start = time.time()
 for wav in theWAVs:
-    sff.searchForCalls(wav,callOutput, dirOutput)
+    sff.searchFileForCalls(wav,callOutput, dirOutput)
     cnt += 1
 #    if cnt == 3:
 #        break
