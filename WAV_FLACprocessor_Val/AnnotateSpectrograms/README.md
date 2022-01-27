@@ -20,11 +20,11 @@ Then draw your boxes and classify your selections.
    For call classification (C_...), I have been describing the frequency contours with letters such as:
        u or U for upward a little or upward a lot,
        d or D for downward,
-       c or C for staying constant for a short period or a long period,
+       c or C for staying constant for a short vs long period,
        w or W for wiggling.
 
    One could alternatively use the Ford Call Catalog descriptors  S_1 or S_19 etc.
 
-   For ships and boats, makeup something memorable!
+   For ships and boats, make up something memorable!
 
 To quit the program, type a q or Q
