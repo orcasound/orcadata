@@ -7,14 +7,14 @@ import os
 from datetime import datetime
 import time
 import numpy as np
-from processFileForCalls_AWS import processFileForCalls 
+from processFileForCalls_AWS import processFileForCalls
 import importlib
 
 import argparse
 """
 Command line:
  ./scanAWSAudioFilesForCalls.py -b dev-archive-orcasound-net -i val_test -o Calls
-       # don't forget to 
+       # don't forget to
             run this program from its directory
             have setup Calls directory inside this directory
 """
@@ -38,14 +38,12 @@ s3bucket = args.s3bucket
 dirAudio = args.input_audiopath
 dirOutput = args.output_logpath
 
+
 if dirAudio.split('/') != '':   #Make sure directory has a final /
     dirAudio += "/"
-if dirOutput.split('/') != '':   #Make sure directory has a final /
-    dirOutput += "/"
 
-print(dirAudio,dirOutput)
 s3client = boto3.client('s3')
-
+#check for empty case here
 audioFiles = s3client.list_objects(Bucket=s3bucket, Prefix=dirAudio)['Contents']
 filedir = audioFiles[0]['Key']
 inputFiles = []    #setup audio file names from s3 bucket
@@ -54,15 +52,18 @@ for i in range(1,len(audioFiles)):  #file names start at index = 1
     if len(nextFile.split('.')) == 2:
         fileType = nextFile.split('.')[1]
         if fileType == 'wav' or fileType == 'WAV' or fileType == 'flac' or fileType == 'FLAC':
-            inputFiles.append(audioFiles[i]['Key'])    
-    
-#print(inputFiles)
+            inputFiles.append(audioFiles[i]['Key'])
 
 
 timeNow = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-outputFile = dirOutput + 'callList_'+ dirAudio.replace('/','_') +"_"+ timeNow+'.txt'
-callOutput = open(outputFile, 'w')  
-callOutput.write("filename\tstartidx\tstopidx\tlencall\tf0\tsigma_f0\tmean_peak\tsigma_peak\n")  
+
+if not os.path.exists(dirOutput):
+    os.mkdir(dirOutput)
+
+outputFile = os.path.join(dirOutput,'callList_'+ dirAudio.replace('/','_') +"_"+ timeNow+'.txt')
+
+callOutput = open(outputFile, 'w')
+callOutput.write("filename\tstartidx\tstopidx\tlencall\tf0\tsigma_f0\tmean_peak\tsigma_peak\n")
 
 
 cnt = 0
@@ -70,14 +71,14 @@ start = time.time()
 for snd in inputFiles:
     print("processing file",snd)
     # go over to S3 bucket and grap a flac file
-    s3client.download_file('dev-archive-orcasound-net', snd, 'working.flac')
-    processFileForCalls('working.flac', snd, callOutput, dirOutput)
+    s3client.download_file(s3bucket, snd, 'working.flac')
+    processFileForCalls('working.flac', snd, callOutput)
     os.remove('working.flac')
     cnt += 1
 #    if cnt == 3:
 #        break
 
-stop = time.time()    
+stop = time.time()
 print("Processed ", cnt, " Audio files in", np.round(stop-start), " seconds.")
 callOutput.close()
 
