@@ -1,10 +1,6 @@
 # Overview
 
-<<<<<<< HEAD
-Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both public-list and public-read enabled, which means you can use the AWS API to connect directly to the buckets, list the available files, and download them without any special credentials.
-=======
-Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both public list and public read enabled, which means you can use the AWS API to connect directly to the buckets, list the available files, and download them without the requirement of any special credentials.
->>>>>>> fixed some typos; simplified the documentation
+Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both public-list and public-read enabled, which means you can use the AWS Client to connect directly to the buckets, list the available files, and download them without any special credentials.
 
 There are three types of buckets, two of which have live and dev versions: 
 1. Streaming -- lossy compressed data for live listening (e.g. HLS and/or DASH)
