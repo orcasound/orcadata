@@ -35,6 +35,8 @@ From that URL, you should be able to derive variable $1 -- the node name (one st
 `aws s3 sync s3://streaming-orcasound-net/rpi_$1/hls/$2/ .` generally or in this case of Bush Point in the evening of 27 Sep 2020 -- 
 `aws s3 sync s3://streaming-orcasound-net/rpi_bush_point/hls/1601253021/ .`
 
+7/28/2022 note: [here is a shell script that Scott uses on OSX to grab 6-24 periods of live-streamed data](https://github.com/orcasound/orcadata/blob/master/Toolbox/ts2mp3.sh) that contain [Orcasound bioacoustic bouts identified by human and/or machine detectors](https://docs.google.com/spreadsheets/d/1Js1CgbmK0Vbe3m0DfiFim1BE4lXMzC75S7GN-7QEE7Y/edit#gid=0). There is a more programatic approach initiated by the OrcaHello realtime inference hackathon teams that was built upon by Dimtry during the 2021 Google Summer of Code. Prakruti and Valentina know the most about these efforts to improve and automate programmatic access to the Orcasound realtime data streams.
+
 For nodes that have sufficent bandwidth, the lossless compressed audio data (FLAC format) can by found in the `archive-orcasound-net` bucket here: 
 
 `aws --no-sign-request s3 ls archive-orcasound-net`
