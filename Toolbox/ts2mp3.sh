@@ -1,7 +1,7 @@
 # This shell script is Scott's quick-n-dirty way to pull down part of an Orcasound S3 bucket. 
 # It uses `s3 sync` AWS CLI command to get all HLS .ts segment objects (usually 6 or 24 hours worth), 
 # and then uses `ffmpeg` to concatenates them and transcode to mp3 format
-# Scott Veirs, latest update 28 July 2022
+# Scott Veirs, latest update 28 July 2022 
 
 # This version uses the two command line variables (1 & 2 below)
 #1 node name (one string with underscores, e.g. bush_point (NOTE: no leading rpi_ !)
