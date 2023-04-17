@@ -8,7 +8,7 @@
 
 
 ### Set parameters:  wav file directory, start and stop seconds for 1 khz call tone and start seconds for data to be calibrated
-## Parameters are set down around line 114
+#### Parameters are set down around line 114
 
 ### Typical output:
 #### Input wav directory is /home/val/PycharmProjects/wavs/RobErinFiles/raw data (unclipped)/
