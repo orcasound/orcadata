@@ -1,4 +1,4 @@
-# Read wav file, calculate callibration factor, calculate callibrated psd
+# Read wav file, calculate calibration factor, calculate calibrated psd
 
 ## Requirements.txt list required libraries
 ### Install dependencies:
