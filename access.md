@@ -49,11 +49,16 @@ For nodes that have sufficent bandwidth, the lossless compressed audio data (FLA
 | dev-streaming-orcasound-net | Dev streaming data        |
 | archive-orcasound-net       | Lossless compressed data  |
 | dev-archive-orcasound-net   | Lossless compressed data  |
-| acoustic-sandbox            | Machine learning space    | 
+| acoustic-sandbox            | Acoustic machine learning labeled data & models  | 
+| visual-sandbox              | Visual machine learning labeled data & models    | 
 
 # AWS CLI syntax
 
 To learn how to use the AWS CLI to download Orcasound data, please see [Using Amazon S3 with the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-services-s3.html).
+
+# Browsing Orcasound data via Quilt
+
+An alternative to listing the contents of Orcasound's S3 buckets via the AWS CLI is browsing the buckets via [open.quiltdata.com](https://open.quiltdata.com) (thanks, Praful!). For example, you can examine the live-streamed data via [https://open.quiltdata.com/b/streaming-orcasound-net](https://open.quiltdata.com/b/streaming-orcasound-net). Substitute other bucket names as listed above to explore all of our raw and labeled data, and other open resources.
 
 # Accessing machine learning resources
 
