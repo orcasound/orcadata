@@ -1,3 +1,6 @@
+# 9/26/2024 NOTE:
+This documentation is not fully updated. We are moving from the old S3 buckets to new sponsored open data buckets in fall 2024! Most importantly the live lossy audio data are no longer stored in `streaming-orcasound-net` but instead are streaming to `audio-orcasound-net`...
+
 # Overview
 
 Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both public-list and public-read enabled, which means you can use the AWS Client to connect directly to the buckets, list the available files, and download them without any special credentials.
