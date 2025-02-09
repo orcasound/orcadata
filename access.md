@@ -1,14 +1,15 @@
 # 9/26/2024 NOTE:
-This documentation is not fully updated. We are moving from the old S3 buckets to new sponsored open data buckets in fall 2024! Most importantly the live lossy audio data are no longer stored in `streaming-orcasound-net` but instead are streaming to `audio-orcasound-net`...
+This documentation is not fully updated. We are moving from the old S3 buckets to new Amazon-sponsored open data buckets in fall 2024! Most importantly the live lossy audio data are no longer stored in `streaming-orcasound-net` but instead are streaming to `audio-orcasound-net` along with other raw data streams (e.g. lossless FLAC format for select nodes). We also intend to store data products in a second Amazon-sponsored open data bucket: `audio-deriv-orcasound-net`
 
 # Overview
 
-Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Cloud Storage Service (S3) buckets. The buckets have both public-list and public-read enabled, which means you can use the AWS Client to connect directly to the buckets, list the available files, and download them without any special credentials.
+Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Storage Service (S3) buckets. The buckets have both public-list and public-read enabled, which means you can use the AWS Client to connect directly to the buckets, list the available files, and download them without any special credentials. Thanks to the Amazon sponsorship of our open data archive, both the storage and egress is free!
 
-There are three types of buckets, two of which have live and dev versions: 
-1. Streaming -- lossy compressed data for live listening (e.g. HLS and/or DASH)
-2. Archive -- lossless compressed data for nodes with sufficient bandwidth (FLAC format)
-3. Sandboxes -- data sets for machine learning and other analyses
+Orcasound maintains other buckets (outside of the sponsored account), including: 
+1. acoustic-sandbox -- a place for acoustic analysis experiments, preliminary data products, draft models, etc.
+2. visual-sandbox -- a place for experimenting with visual data that contextualizes underwater signals and noise, including photogrammetry processing and machine learning models (e.g. orca-eye-aye side-view vessel classifier)
+
+** 2/8/25 NOTE: sections below are not yet updated **
 
 The two versions of the streaming bucket support three versions of the Orcasound app (as depicted in this evolution model): dev-streaming-orcasound-net is for end-to-end tests where the audio source is stable/known; streaming-orcasound-net is *both* for beta-testing new app features with realistic audio data from existing nodes and for the public production version at live.orcasound.net
 
