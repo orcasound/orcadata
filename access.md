@@ -1,6 +1,12 @@
 # 9/26/2024 NOTE:
 This documentation is not fully updated. We are moving from the old S3 buckets to new Amazon-sponsored open data buckets in fall 2024! Most importantly the live lossy audio data are no longer stored in `streaming-orcasound-net` but instead are streaming to `audio-orcasound-net` along with other raw data streams (e.g. lossless FLAC format for select nodes). We also intend to store data products in a second Amazon-sponsored open data bucket: `audio-deriv-orcasound-net`
 
+Quilt open data browser links:
+
+- [audio-orcasound-net](https://open.quiltdata.com/b/audio-orcasound-net/tree/)
+- [audio-deriv-orcasound-net](https://open.quiltdata.com/b/audio-deriv-orcasound-net/tree/)
+
+
 # Overview
 
 Orcasound hydrophone data are stored in publicly accessible Amazon Web Service (AWS) Simple Storage Service (S3) buckets. The buckets have both public-list and public-read enabled, which means you can use the AWS Client to connect directly to the buckets, list the available files, and download them without any special credentials. Thanks to the Amazon sponsorship of our open data archive, both the storage and egress is free!
