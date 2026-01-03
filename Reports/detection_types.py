@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -84,3 +84,47 @@ class OrcasoundListenerReport(BaseModel):
     maxTime: str
     minTime: str
     visible: bool
+
+
+# Cache models for month-bucket caching
+
+class DateRange(BaseModel):
+    """Date range for a month bucket in PST timezone"""
+    min_pst: str
+    max_pst: str
+
+
+class MonthMetadata(BaseModel):
+    """Metadata for a cached month bucket"""
+    first_fetch: str
+    last_updated: str
+    detection_count: int
+    date_range: DateRange
+    complete: bool
+
+
+class CacheIndex(BaseModel):
+    """Cache index tracking all fetched months"""
+    months: Dict[str, MonthMetadata]
+    last_full_fetch: Optional[str] = None
+
+
+class FlattenedOrcasoundDetection(BaseModel):
+    """Orcasound detection with denormalized feed info"""
+    # Original detection fields
+    id: str
+    timestamp: str
+    category: Optional[str] = None
+    description: Optional[str] = None
+    source: str
+    playlistTimestamp: int
+    playerOffset: str
+    feedId: str
+    listenerCount: Optional[int] = None
+    visible: bool
+    sourceIp: Optional[str] = None
+    # Denormalized from parent candidate
+    feed_name: str
+    feed_slug: str
+    feed_node_name: str
+    candidate_id: str
