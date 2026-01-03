@@ -1,0 +1,12 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Cache directories
+cache/
+test_cache/
+
+# Claude files
+claude-instructions/
+.claude/
