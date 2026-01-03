@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
-"""Fetch orca detections from Orcasound GraphQL API with month-bucket caching."""
+"""Fetch orca detections from Orcasound GraphQL API with month-bucket caching.
+
+Uses the Detection resource directly (not Candidate) per task requirements.
+"""
 
 import argparse
 import logging
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytz
 
-from detection_types import (
-    FlattenedOrcasoundDetection,
-    OrcasoundDetection,
-    OrcasoundListenerReport,
-)
+from detection_types import OrcasoundDetectionGQL, OrcasoundFeedGQL
 from fetch_utils import (
     calculate_date_range,
     create_http_session,
@@ -24,10 +23,10 @@ from fetch_utils import (
     extract_month_year_pst,
     get_cached_months,
     get_current_month_pst,
+    get_month_date_range,
     get_month_dir,
     get_months_in_range,
     is_month_complete,
-    load_cache_index,
     parse_timestamp_to_pst,
     setup_logging,
     update_cache_index,
@@ -35,14 +34,14 @@ from fetch_utils import (
     write_jsonl_entry,
 )
 from orcasound_graphql import (
-    CANDIDATES_QUERY,
-    build_query_variables,
+    DETECTIONS_QUERY,
+    GRAPHQL_ENDPOINT,
+    build_detection_query_variables,
     execute_graphql_query,
 )
 
 logger = logging.getLogger(__name__)
 
-GRAPHQL_ENDPOINT = "https://live.orcasound.net/graphiql"
 DEFAULT_CACHE_DIR = Path("./cache/orcasound")
 DEFAULT_BATCH_SIZE = 1000
 DEFAULT_DELAY = 0.5
@@ -118,7 +117,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--feed",
         type=str,
-        help="Filter by feed slug",
+        help="Filter by feed ID",
     )
 
     # Output options
@@ -136,220 +135,184 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def fetch_candidates_batch(
+def fetch_detections_batch(
     session,
     offset: int,
     batch_size: int,
+    include_machine: bool,
     category: Optional[str],
-    feed_slug: Optional[str],
-    timeout: int = 30,
-) -> Dict[str, Any]:
+    feed_id: Optional[str],
+    timestamp_gte: Optional[str],
+    timestamp_lt: Optional[str],
+    timeout: int = 60,
+) -> Tuple[List[OrcasoundDetectionGQL], bool, int, int]:
     """
-    Fetch a single batch of candidates via GraphQL.
+    Fetch a single batch of detections via GraphQL.
 
     Args:
         session: HTTP session
         offset: Pagination offset
         batch_size: Number of records per batch
+        include_machine: Include machine detections
         category: Optional category filter
-        feed_slug: Optional feed slug filter
+        feed_id: Optional feed ID filter
+        timestamp_gte: Timestamp >= filter (ISO format)
+        timestamp_lt: Timestamp < filter (ISO format)
         timeout: Request timeout
 
     Returns:
-        Candidates response dictionary
+        Tuple of (detections list, has_next_page, total_count, actual_limit)
     """
-    variables = build_query_variables(offset, batch_size, category, feed_slug)
+    variables = build_detection_query_variables(
+        offset=offset,
+        limit=batch_size,
+        include_machine=include_machine,
+        category=category,
+        feed_id=feed_id,
+        timestamp_gte=timestamp_gte,
+        timestamp_lt=timestamp_lt,
+    )
 
     try:
         data = execute_graphql_query(
-            session, GRAPHQL_ENDPOINT, CANDIDATES_QUERY, variables, timeout
+            session, GRAPHQL_ENDPOINT, DETECTIONS_QUERY, variables, timeout
         )
 
-        candidates_data = data.get("candidates", {})
+        detections_data = data.get("detections", {})
+        results = detections_data.get("results", [])
+        has_next = detections_data.get("hasNextPage", False)
+        total_count = detections_data.get("count", 0)
+        # API may enforce a max limit lower than requested
+        actual_limit = detections_data.get("limit", batch_size)
 
-        count = candidates_data.get("count", 0)
-        has_next = candidates_data.get("hasNextPage", False)
-        results = candidates_data.get("results", [])
+        # Parse results into Pydantic models
+        detections = []
+        for result in results:
+            try:
+                feed = OrcasoundFeedGQL(**result["feed"])
+                detection = OrcasoundDetectionGQL(
+                    id=result["id"],
+                    timestamp=result["timestamp"],
+                    source=result["source"],
+                    category=result.get("category"),
+                    feedId=result["feedId"],
+                    playlistTimestamp=result["playlistTimestamp"],
+                    playerOffset=result["playerOffset"],
+                    description=result.get("description"),
+                    listenerCount=result.get("listenerCount"),
+                    visible=result.get("visible"),
+                    feed=feed,
+                )
+                detections.append(detection)
+            except Exception as e:
+                logger.warning(f"Failed to parse detection {result.get('id')}: {e}")
+                continue
 
         logger.info(
-            f"Fetched batch at offset {offset}: {len(results)} candidates "
-            f"(total: {count}, hasNext: {has_next})"
+            f"Fetched batch at offset {offset}: {len(detections)} detections "
+            f"(total: {total_count}, hasNext: {has_next}, limit: {actual_limit})"
         )
 
-        return candidates_data
+        return detections, has_next, total_count, actual_limit
 
     except Exception as e:
         logger.error(f"Error fetching batch at offset {offset}: {e}")
         raise
 
 
-def fetch_all_candidates(
+def fetch_all_detections(
     session,
     batch_size: int,
+    include_machine: bool,
     category: Optional[str],
-    feed_slug: Optional[str],
+    feed_id: Optional[str],
+    timestamp_gte: Optional[str],
+    timestamp_lt: Optional[str],
     max_batches: Optional[int],
     delay: float,
-) -> List[OrcasoundListenerReport]:
+) -> List[OrcasoundDetectionGQL]:
     """
-    Fetch all candidates with pagination.
+    Fetch all detections with pagination.
 
     Args:
         session: HTTP session
         batch_size: Number of records per batch
+        include_machine: Include machine detections
         category: Optional category filter
-        feed_slug: Optional feed slug filter
-        max_batches: Maximum number of batches to fetch (for testing)
+        feed_id: Optional feed ID filter
+        timestamp_gte: Timestamp >= filter
+        timestamp_lt: Timestamp < filter
+        max_batches: Maximum number of batches (for testing)
         delay: Delay between requests
 
     Returns:
-        List of all candidates
+        List of all detections
     """
-    all_candidates = []
+    all_detections = []
     offset = 0
     batch_num = 0
+    actual_limit = batch_size  # Will be updated from API response
+
+    # Log the filters being applied
+    filters = []
+    if not include_machine:
+        filters.append("source=HUMAN")
+    if category:
+        filters.append(f"category={category}")
+    if feed_id:
+        filters.append(f"feed={feed_id}")
+    if timestamp_gte:
+        filters.append(f"from={timestamp_gte}")
+    if timestamp_lt:
+        filters.append(f"to={timestamp_lt}")
+    logger.info(f"Querying API with filters: {', '.join(filters) if filters else 'none'}")
 
     while True:
+        batch_num += 1
+
         # Check if we've reached max batches limit
-        if max_batches and batch_num >= max_batches:
+        if max_batches and batch_num > max_batches:
             logger.info(f"Reached max batches limit: {max_batches}")
             break
 
         # Fetch batch
         try:
-            candidates_data = fetch_candidates_batch(
-                session, offset, batch_size, category, feed_slug
+            detections, has_next, total_count, actual_limit = fetch_detections_batch(
+                session,
+                offset=offset,
+                batch_size=batch_size,
+                include_machine=include_machine,
+                category=category,
+                feed_id=feed_id,
+                timestamp_gte=timestamp_gte,
+                timestamp_lt=timestamp_lt,
             )
         except Exception as e:
-            logger.error(f"Failed to fetch batch at offset {offset}: {e}")
-            # Save what we have so far
+            logger.error(f"Failed to fetch batch {batch_num}: {e}")
             break
 
-        results = candidates_data.get("results", [])
-        has_next = candidates_data.get("hasNextPage", False)
-
-        # Parse candidates
-        for result in results:
-            try:
-                candidate = OrcasoundListenerReport(**result)
-                all_candidates.append(candidate)
-            except Exception as e:
-                logger.warning(f"Failed to parse candidate: {e}")
-                continue
+        # Add detections
+        all_detections.extend(detections)
 
         # Check if we're done
-        if not results or not has_next:
-            logger.info(f"Fetched all candidates (total batches: {batch_num + 1})")
+        if not detections or not has_next:
+            logger.info(f"Fetched all detections in {batch_num} batches")
             break
 
-        # Move to next batch
-        offset += batch_size
-        batch_num += 1
+        # Move to next page using actual limit from API (may be less than requested)
+        offset += actual_limit
 
         # Delay before next request
         if delay > 0:
             time.sleep(delay)
 
-    logger.info(f"Total candidates fetched: {len(all_candidates)}")
-    return all_candidates
-
-
-def flatten_and_filter_detections(
-    candidates: List[OrcasoundListenerReport],
-    include_machine: bool,
-) -> List[Dict[str, Any]]:
-    """
-    Extract and filter detections from candidates.
-
-    Args:
-        candidates: List of candidate reports
-        include_machine: Whether to include machine-reported detections
-
-    Returns:
-        List of flattened detection dictionaries
-    """
-    flattened = []
-    human_count = 0
-    machine_count = 0
-
-    for candidate in candidates:
-        for detection in candidate.detections:
-            # Filter by source
-            is_human = detection.source == "HUMAN"
-
-            if not is_human:
-                machine_count += 1
-                if not include_machine:
-                    continue
-
-            if is_human:
-                human_count += 1
-
-            # Flatten: attach feed info from parent candidate
-            flat_detection = {
-                # Original detection fields
-                "id": detection.id,
-                "timestamp": detection.timestamp,
-                "category": detection.category,
-                "description": detection.description,
-                "source": detection.source,
-                "playlistTimestamp": detection.playlistTimestamp,
-                "playerOffset": detection.playerOffset,
-                "feedId": detection.feedId,
-                "listenerCount": detection.listenerCount,
-                "visible": detection.visible,
-                "sourceIp": detection.sourceIp,
-                # Denormalized from parent candidate
-                "feed_name": candidate.feed.name,
-                "feed_slug": candidate.feed.slug,
-                "feed_node_name": candidate.feed.nodeName,
-                "candidate_id": candidate.id,
-            }
-
-            flattened.append(flat_detection)
-
-    logger.info(
-        f"Filtered detections: {human_count} human, {machine_count} machine "
-        f"(keeping {len(flattened)})"
-    )
-
-    return flattened
-
-
-def group_detections_by_month(
-    detections: List[Dict[str, Any]],
-) -> Dict[str, List[Dict[str, Any]]]:
-    """
-    Group detections by month (YYYY-MM in PST).
-
-    Args:
-        detections: List of flattened detections
-
-    Returns:
-        Dictionary mapping month string to list of detections
-    """
-    months: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-
-    for detection in detections:
-        try:
-            month = extract_month_year_pst(detection["timestamp"])
-            months[month].append(detection)
-        except Exception as e:
-            logger.warning(
-                f"Failed to parse timestamp for detection {detection['id']}: {e}"
-            )
-            continue
-
-    logger.info(f"Grouped detections into {len(months)} months")
-    for month, month_detections in sorted(months.items()):
-        logger.info(f"  {month}: {len(month_detections)} detections")
-
-    return dict(months)
+    logger.info(f"Total detections fetched: {len(all_detections)}")
+    return all_detections
 
 
 def get_month_timestamp_range(
-    detections: List[Dict[str, Any]],
-) -> tuple[str, str]:
+    detections: List[OrcasoundDetectionGQL],
+) -> Tuple[str, str]:
     """
     Get min and max timestamps for a month in PST.
 
@@ -362,7 +325,7 @@ def get_month_timestamp_range(
     timestamps_pst = []
     for detection in detections:
         try:
-            dt_pst = parse_timestamp_to_pst(detection["timestamp"])
+            dt_pst = parse_timestamp_to_pst(detection.timestamp)
             timestamps_pst.append(dt_pst)
         except Exception:
             continue
@@ -382,7 +345,7 @@ def get_month_timestamp_range(
 def save_month_bucket(
     cache_dir: Path,
     month: str,
-    detections: List[Dict[str, Any]],
+    detections: List[OrcasoundDetectionGQL],
 ) -> None:
     """
     Save month bucket to disk.
@@ -390,14 +353,15 @@ def save_month_bucket(
     Args:
         cache_dir: Cache directory
         month: Month string (YYYY-MM)
-        detections: List of flattened detections for the month
+        detections: List of detections for the month
     """
     month_dir = get_month_dir(cache_dir, month)
     ensure_directory(month_dir)
 
-    # Save raw detections
+    # Save raw detections as JSON
     detections_file = month_dir / "raw_detections.json"
-    write_json(detections_file, detections)
+    detections_data = [d.model_dump() for d in detections]
+    write_json(detections_file, detections_data)
 
     # Write metadata
     metadata_file = month_dir / "metadata.jsonl"
@@ -468,7 +432,7 @@ def main():
     args = parse_args()
     setup_logging(args.verbose)
 
-    logger.info("Orcasound GraphQL API Fetcher")
+    logger.info("Orcasound GraphQL API Fetcher (Detection resource)")
     logger.info(f"Cache directory: {args.cache_dir}")
 
     # Calculate date range
@@ -519,55 +483,84 @@ def main():
         logger.info("\nRe-run without --dry-run to fetch")
         return 0
 
+    # Skip if all months are already cached
+    if not months_to_fetch:
+        logger.info("\nAll months already cached. Nothing to fetch.")
+        logger.info("Use --force-refresh to re-fetch cached months.")
+        return 0
+
     # Log fetch start
     log_fetch_start(args.cache_dir, args)
 
-    # Fetch all candidates
-    logger.info(f"\nFetching candidates from GraphQL API...")
+    # Create HTTP session
     session = create_http_session()
 
-    try:
-        all_candidates = fetch_all_candidates(
-            session,
-            args.batch_size,
-            args.category,
-            args.feed,
-            args.max_batches,
-            args.delay,
-        )
-    except Exception as e:
-        logger.error(f"Failed to fetch candidates: {e}")
-        return 1
+    # Fetch month by month
+    logger.info(f"\nFetching {len(months_to_fetch)} month(s) from API...")
 
-    if not all_candidates:
-        logger.warning("No candidates fetched")
-        return 0
-
-    # Flatten and filter detections
-    logger.info(f"\nFlattening and filtering detections...")
-    detections = flatten_and_filter_detections(
-        all_candidates, args.include_machine
-    )
-
-    if not detections:
-        logger.warning("No detections after filtering")
-        return 0
-
-    # Group by month
-    logger.info(f"\nGrouping detections by month...")
-    months_data = group_detections_by_month(detections)
-
-    # Save month buckets
-    logger.info(f"\nSaving month buckets...")
     months_saved = 0
     total_saved = 0
+    pacific_tz = pytz.timezone("US/Pacific")
 
-    for month in sorted(months_data.keys()):
-        if month not in months_to_fetch:
-            logger.info(f"Skipping {month} (not in fetch range)")
+    for month in sorted(months_to_fetch):
+        logger.info(f"\n--- Fetching {month} ---")
+
+        # Get date range for this month
+        month_start, month_end = get_month_date_range(month)
+
+        # Convert to ISO timestamps for GraphQL filter
+        # Start of month in PST, converted to UTC
+        start_dt = pacific_tz.localize(
+            datetime.combine(month_start, datetime.min.time())
+        )
+        timestamp_gte = start_dt.astimezone(pytz.UTC).strftime(
+            "%Y-%m-%dT%H:%M:%S.000000Z"
+        )
+
+        # End of month + 2 days to capture PST month-end detections
+        # (which may appear on the next UTC day due to timezone offset)
+        end_dt = pacific_tz.localize(
+            datetime.combine(month_end + timedelta(days=2), datetime.min.time())
+        )
+        timestamp_lt = end_dt.astimezone(pytz.UTC).strftime(
+            "%Y-%m-%dT%H:%M:%S.000000Z"
+        )
+
+        try:
+            detections = fetch_all_detections(
+                session,
+                batch_size=args.batch_size,
+                include_machine=args.include_machine,
+                category=args.category,
+                feed_id=args.feed,
+                timestamp_gte=timestamp_gte,
+                timestamp_lt=timestamp_lt,
+                max_batches=args.max_batches,
+                delay=args.delay,
+            )
+        except Exception as e:
+            logger.error(f"Failed to fetch {month}: {e}")
+            continue  # Try next month
+
+        if not detections:
+            logger.info(f"No detections found for {month}")
             continue
 
-        month_detections = months_data[month]
+        # Filter to only detections that belong to this PST month
+        # (API query may include some from adjacent months due to UTC/PST offset)
+        month_detections = [
+            d for d in detections if extract_month_year_pst(d.timestamp) == month
+        ]
+        logger.info(
+            f"Filtered to {len(month_detections)} detections for {month} "
+            f"(from {len(detections)} fetched)"
+        )
+
+        if not month_detections:
+            logger.info(f"No detections for {month} after PST filtering")
+            continue
+
+        # Save month bucket
         save_month_bucket(args.cache_dir, month, month_detections)
         months_saved += 1
         total_saved += len(month_detections)

@@ -1,38 +1,35 @@
 """GraphQL query builder for Orcasound API."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-# GraphQL query for fetching candidates with detections
-CANDIDATES_QUERY = """
-query candidates($filter: CandidateFilterInput, $limit: Int, $offset: Int, $sort: [CandidateSortInput]) {
-  candidates(filter: $filter, limit: $limit, offset: $offset, sort: $sort) {
+# GraphQL endpoint (NOT graphiql)
+GRAPHQL_ENDPOINT = "https://live.orcasound.net/graphql"
+
+# GraphQL query for fetching detections directly (preferred, per task requirements)
+DETECTIONS_QUERY = """
+query detections($filter: DetectionFilterInput, $limit: Int, $offset: Int, $sort: [DetectionSortInput]) {
+  detections(filter: $filter, limit: $limit, offset: $offset, sort: $sort) {
     count
     hasNextPage
+    lastPage
+    pageNumber
+    limit
     results {
       id
-      minTime
-      maxTime
+      timestamp
+      source
       category
-      detectionCount
+      feedId
+      playlistTimestamp
+      playerOffset
+      description
+      listenerCount
       visible
       feed {
         id
-        slug
         name
+        slug
         nodeName
-      }
-      detections {
-        id
-        category
-        description
-        listenerCount
-        playlistTimestamp
-        playerOffset
-        timestamp
-        visible
-        sourceIp
-        source
-        feedId
       }
     }
   }
@@ -40,20 +37,26 @@ query candidates($filter: CandidateFilterInput, $limit: Int, $offset: Int, $sort
 """
 
 
-def build_query_variables(
+def build_detection_query_variables(
     offset: int = 0,
     limit: int = 1000,
+    include_machine: bool = False,
     category: Optional[str] = None,
-    feed_slug: Optional[str] = None,
+    feed_id: Optional[str] = None,
+    timestamp_gte: Optional[str] = None,
+    timestamp_lt: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Build GraphQL query variables.
+    Build GraphQL query variables for Detection query.
 
     Args:
         offset: Pagination offset
         limit: Number of records per batch
+        include_machine: If False, filter to HUMAN source only
         category: Optional category filter (WHALE, VESSEL, OTHER)
-        feed_slug: Optional feed slug filter
+        feed_id: Optional feed ID filter
+        timestamp_gte: ISO timestamp for greaterThanOrEqual filter
+        timestamp_lt: ISO timestamp for lessThan filter
 
     Returns:
         Variables dictionary for GraphQL query
@@ -61,20 +64,37 @@ def build_query_variables(
     variables: Dict[str, Any] = {
         "limit": limit,
         "offset": offset,
-        "sort": [{"field": "MIN_TIME", "order": "DESC"}],
+        "sort": [{"field": "TIMESTAMP", "order": "DESC"}],
     }
 
     # Build filter object
-    filter_obj: Dict[str, Any] = {}
+    filter_conditions: List[Dict[str, Any]] = []
 
+    # Source filter (default to HUMAN only)
+    if not include_machine:
+        filter_conditions.append({"source": {"eq": "HUMAN"}})
+
+    # Category filter
     if category:
-        filter_obj["category"] = {"eq": category.upper()}
+        filter_conditions.append({"category": {"eq": category.upper()}})
 
-    if feed_slug:
-        filter_obj["feed"] = {"slug": {"eq": feed_slug}}
+    # Feed filter
+    if feed_id:
+        filter_conditions.append({"feedId": {"eq": feed_id}})
 
-    if filter_obj:
-        variables["filter"] = filter_obj
+    # Timestamp filters
+    if timestamp_gte:
+        filter_conditions.append({"timestamp": {"greaterThanOrEqual": timestamp_gte}})
+
+    if timestamp_lt:
+        filter_conditions.append({"timestamp": {"lessThan": timestamp_lt}})
+
+    # Combine with AND if multiple conditions
+    if filter_conditions:
+        if len(filter_conditions) == 1:
+            variables["filter"] = filter_conditions[0]
+        else:
+            variables["filter"] = {"and": filter_conditions}
 
     return variables
 

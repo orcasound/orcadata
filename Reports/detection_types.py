@@ -109,22 +109,27 @@ class CacheIndex(BaseModel):
     last_full_fetch: Optional[str] = None
 
 
-class FlattenedOrcasoundDetection(BaseModel):
-    """Orcasound detection with denormalized feed info"""
-    # Original detection fields
+# Models for Orcasound GraphQL API Detection resource
+
+
+class OrcasoundFeedGQL(BaseModel):
+    """Feed info from Orcasound GraphQL Detection query"""
     id: str
-    timestamp: str
-    category: Optional[str] = None
-    description: Optional[str] = None
-    source: str
-    playlistTimestamp: int
-    playerOffset: str
+    name: str
+    slug: str
+    nodeName: str
+
+
+class OrcasoundDetectionGQL(BaseModel):
+    """Detection from Orcasound GraphQL API (Detection resource type)"""
+    id: str
+    timestamp: str  # ISO datetime e.g. "2026-01-03T03:41:04.000000Z"
+    source: str  # "HUMAN" or "MACHINE"
+    category: Optional[str] = None  # "WHALE", "VESSEL", "OTHER", or None
     feedId: str
+    playlistTimestamp: int  # Unix epoch timestamp
+    playerOffset: str  # Decimal as string
+    description: Optional[str] = None
     listenerCount: Optional[int] = None
-    visible: bool
-    sourceIp: Optional[str] = None
-    # Denormalized from parent candidate
-    feed_name: str
-    feed_slug: str
-    feed_node_name: str
-    candidate_id: str
+    visible: Optional[bool] = None
+    feed: OrcasoundFeedGQL
