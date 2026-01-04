@@ -16,7 +16,7 @@ class Annotation(BaseModel):
     confidence: float
 
 
-class Detection(BaseModel):
+class OrcaHelloDetection(BaseModel):
     id: str
     audioUri: str
     spectrogramUri: str
@@ -32,26 +32,8 @@ class Detection(BaseModel):
     tags: Optional[str] = None
 
 
-class MetadataEntry(BaseModel):
-    type: str  # "start", "server_info", "page_complete", "complete"
-    base_url: Optional[str] = None
-    timeframe: Optional[str] = None
-    records_per_page: Optional[int] = None
-    started_utc: Optional[str] = None
-    start_page: Optional[int] = None
-    max_pages: Optional[int] = None
-    total_pages_header: Optional[int] = None
-    total_records_header: Optional[int] = None
-    page: Optional[int] = None
-    count: Optional[int] = None
-    timestamp: Optional[str] = None
-    finished_utc: Optional[str] = None
-    total_pages_fetched: Optional[int] = None
-    total_records_fetched: Optional[int] = None
-
-
-class ApiResponseV1(BaseModel):
-    detections: List[Detection]
+class OrcaHelloApiResponseV1(BaseModel):
+    detections: List[OrcaHelloDetection]
 
 
 class OrcasoundDetection(BaseModel):

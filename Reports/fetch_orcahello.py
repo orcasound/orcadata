@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pytz
-from detection_types import ApiResponseV1, Detection
+from detection_types import OrcaHelloApiResponseV1, OrcaHelloDetection
 from fetch_utils import (
     calculate_date_range,
     create_http_session,
@@ -125,7 +125,7 @@ def fetch_page(
     date_to: Optional[date] = None,
     location: Optional[str] = None,
     timeout: int = 30,
-) -> Tuple[List[Detection], int]:
+) -> Tuple[List[OrcaHelloDetection], int]:
     """
     Fetch a single page of detections.
 
@@ -165,7 +165,7 @@ def fetch_page(
         data = response.json()
 
         # Parse response using Pydantic
-        api_response = ApiResponseV1(detections=data)
+        api_response = OrcaHelloApiResponseV1(detections=data)
         detections = api_response.detections
 
         # Get total pages from header (API uses lowercase headers)
@@ -198,7 +198,7 @@ def fetch_all_detections(
     location: Optional[str],
     max_pages: Optional[int],
     delay: float,
-) -> List[Detection]:
+) -> List[OrcaHelloDetection]:
     """
     Fetch all detections with pagination.
 
@@ -266,8 +266,8 @@ def fetch_all_detections(
 
 
 def group_detections_by_month(
-    detections: List[Detection],
-) -> Dict[str, List[Detection]]:
+    detections: List[OrcaHelloDetection],
+) -> Dict[str, List[OrcaHelloDetection]]:
     """
     Group detections by month (YYYY-MM in PST).
 
@@ -277,7 +277,7 @@ def group_detections_by_month(
     Returns:
         Dictionary mapping month string to list of detections
     """
-    months: Dict[str, List[Detection]] = defaultdict(list)
+    months: Dict[str, List[OrcaHelloDetection]] = defaultdict(list)
 
     for detection in detections:
         try:
@@ -297,7 +297,7 @@ def group_detections_by_month(
 
 
 def get_month_timestamp_range(
-    detections: List[Detection],
+    detections: List[OrcaHelloDetection],
 ) -> Tuple[str, str]:
     """
     Get min and max timestamps for a month in PST.
@@ -331,7 +331,7 @@ def get_month_timestamp_range(
 def save_month_bucket(
     cache_dir: Path,
     month: str,
-    detections: List[Detection],
+    detections: List[OrcaHelloDetection],
 ) -> None:
     """
     Save month bucket to disk.

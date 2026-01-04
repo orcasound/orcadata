@@ -6,6 +6,8 @@ env/
 # Cache directories
 cache/
 test_cache/
+tmp/
+combined_logbook/
 
 # Claude files
 claude-instructions/
