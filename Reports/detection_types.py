@@ -115,3 +115,47 @@ class OrcasoundDetectionGQL(BaseModel):
     listenerCount: Optional[int] = None
     visible: Optional[bool] = None
     feed: OrcasoundFeedGQL
+
+
+# Models for combined/preprocessed detection data
+
+
+class HydrophoneLocation(BaseModel):
+    """Unified hydrophone location metadata from all sources"""
+    slug: str  # Canonical identifier (e.g., "sunset-bay")
+    display_name: str  # Human-readable name
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    orcahello_name: Optional[str] = None  # Name as it appears in OrcaHello API
+    orcasound_feed_name: Optional[str] = None  # Name from Orcasound feed
+    orcasound_feed_slug: Optional[str] = None  # Slug from Orcasound feed
+    orcasound_node_name: Optional[str] = None  # Node name (e.g., "rpi_sunset_bay")
+
+
+class HydrophoneLocationsFile(BaseModel):
+    """Complete hydrophone locations reference file"""
+    locations: List[HydrophoneLocation]
+    name_to_slug: Dict[str, str]  # Any name variant -> canonical slug
+
+
+class CombinedDetection(BaseModel):
+    """Unified detection record from OrcaHello or Orcasound, for CSV export"""
+    source: str  # "orcahello" or "orcasound"
+    detection_id: str  # Original ID from source API
+    timestamp_utc: str  # ISO 8601 UTC timestamp
+    timestamp_unix: int  # Unix epoch seconds
+    timestamp_pacific: str  # ISO 8601 in US/Pacific timezone
+    location_slug: str  # Standardized location slug
+    srkw_positive: bool  # True if whale detection confirmed
+    comments: Optional[str] = None  # Human comments
+
+    # OrcaHello-specific metadata
+    meta_orcahello_moderator: Optional[str] = None
+    meta_orcahello_tags: Optional[str] = None
+    meta_orcahello_confidence: Optional[float] = None
+
+    # Orcasound-specific metadata
+    meta_orcasound_listener_count: Optional[int] = None
+    meta_orcasound_category: Optional[str] = None
+    meta_orcasound_hls_timestamp: Optional[int] = None
+    meta_orcasound_hls_offset: Optional[str] = None
