@@ -57,7 +57,7 @@ python fetch_orcahello.py --verbose
 - `--from-date YYYY-MM-DD` - Fetch from specific date
 - `--to-date YYYY-MM-DD` - Fetch until specific date
 - `--force-refresh` - Re-fetch even cached months
-- `--cache-dir PATH` - Cache directory (default: `./cache/orcahello`)
+- `--cache-dir PATH` - Cache directory (default: `./fetch_cache/orcahello`)
 - `--records-per-page INT` - Page size (default: 100)
 - `--delay FLOAT` - Delay between requests in seconds (default: 0.5)
 - `--max-pages INT` - Limit pages for testing
@@ -91,7 +91,7 @@ python fetch_orcasound.py --dry-run
 - `--from-date YYYY-MM-DD` - Fetch from specific date
 - `--to-date YYYY-MM-DD` - Fetch until specific date
 - `--force-refresh` - Re-fetch even cached months
-- `--cache-dir PATH` - Cache directory (default: `./cache/orcasound`)
+- `--cache-dir PATH` - Cache directory (default: `./fetch_cache/orcasound`)
 - `--batch-size INT` - GraphQL limit per request (default: 1000)
 - `--delay FLOAT` - Delay between requests in seconds (default: 0.5)
 - `--max-batches INT` - Limit batches for testing
@@ -243,7 +243,7 @@ python fetch_orcahello.py
 - **Data**: AI-moderated orca call detections with spectrograms
 
 ### Orcasound API
-- **GraphQL Endpoint**: https://live.orcasound.net/api/graphql
+- **GraphQL Endpoint**: https://live.orcasound.net/graphql
 - **GraphiQL UI**: https://live.orcasound.net/graphiql
 - **Redoc UI**: https://live.orcasound.net/api/json/redoc
 - **Type**: GraphQL API with offset pagination

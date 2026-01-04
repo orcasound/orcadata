@@ -35,7 +35,7 @@ from fetch_utils import (
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://aifororcasdetections.azurewebsites.net/api/detections"
-DEFAULT_CACHE_DIR = Path("./cache/orcahello")
+DEFAULT_CACHE_DIR = Path("./fetch_cache/orcahello")
 DEFAULT_RECORDS_PER_PAGE = 50
 DEFAULT_DELAY = 0.5
 

@@ -4,7 +4,7 @@ venv/
 env/
 
 # Cache directories
-cache/
+fetch_cache/
 test_cache/
 tmp/
 combined_logbook/

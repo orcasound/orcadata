@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pytz
-
 from detection_types import OrcasoundDetectionGQL, OrcasoundFeedGQL
 from fetch_utils import (
     calculate_date_range,
@@ -42,7 +41,7 @@ from orcasound_graphql import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CACHE_DIR = Path("./cache/orcasound")
+DEFAULT_CACHE_DIR = Path("./fetch_cache/orcasound")
 DEFAULT_BATCH_SIZE = 1000
 DEFAULT_DELAY = 0.5
 
