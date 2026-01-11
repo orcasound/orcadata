@@ -15,7 +15,6 @@ Usage:
 
 import argparse
 import csv
-import json
 import logging
 import re
 from datetime import date, datetime
@@ -25,10 +24,10 @@ from typing import Dict, List, Optional, Set, Tuple
 import pytz
 from detection_types import (
     CombinedDetection,
+    DailyLogbookEvent,
+    HourlyLogbookEvent,
     HydrophoneLocation,
     HydrophoneLocationsFile,
-    OrcaHelloDetection,
-    OrcasoundDetectionGQL,
 )
 from fetch_utils import (
     ensure_directory,
@@ -44,7 +43,13 @@ CACHE_DIR = Path("./fetch_cache")
 ORCAHELLO_CACHE = CACHE_DIR / "orcahello"
 ORCASOUND_CACHE = CACHE_DIR / "orcasound"
 OUTPUT_DIR = Path("./combined_logbook/detections")
+HOURLY_DIR = Path("./combined_logbook/hourly_events")
+DAILY_DIR = Path("./combined_logbook/daily_events")
 LOCATIONS_FILE = CACHE_DIR / "hydrophone_locations.json"
+
+# Source-specific thresholds for determining hourly srkw_positive
+ORCAHELLO_HOURLY_DETECTION_THRESHOLD = 1  # OrcaHello detections are moderated, so >= 1 positive is significant
+ORCASOUND_HOURLY_DETECTION_THRESHOLD = 3  # Orcasound detections are not moderated, so >= 3 positives needed
 
 # Manual alias mappings for names that don't auto-match
 # Maps OrcaHello location names to canonical Orcasound slugs
@@ -414,7 +419,7 @@ def write_metadata(
 
 def concatenate_monthly_csvs(months: List[str]) -> int:
     """
-    Concatenate all monthly CSV files into a single file with a month column.
+    Concatenate all monthly CSV files into a single file with a year_month column.
 
     Args:
         months: List of month strings (YYYY-MM) to concatenate
@@ -425,8 +430,8 @@ def concatenate_monthly_csvs(months: List[str]) -> int:
     output_file = OUTPUT_DIR / "all_detections.csv"
     total_rows = 0
 
-    # Get field names and add month column at the beginning
-    fieldnames = ["month"] + list(CombinedDetection.model_fields.keys())
+    # Get field names and add year_month column at the beginning
+    fieldnames = ["year_month"] + list(CombinedDetection.model_fields.keys())
 
     with open(output_file, "w", newline="", encoding="utf-8") as outf:
         writer = csv.DictWriter(outf, fieldnames=fieldnames)
@@ -440,11 +445,297 @@ def concatenate_monthly_csvs(months: List[str]) -> int:
             with open(month_file, "r", newline="", encoding="utf-8") as inf:
                 reader = csv.DictReader(inf)
                 for row in reader:
-                    row["month"] = month
+                    row["year_month"] = month
                     writer.writerow(row)
                     total_rows += 1
 
     logger.info(f"Concatenated {total_rows} rows into {output_file}")
+    return total_rows
+
+
+# --- Aggregation Functions ---
+
+
+def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
+    """
+    Aggregate detections to hourly events.
+
+    Args:
+        month: Month string (YYYY-MM)
+
+    Returns:
+        List of HourlyLogbookEvent objects
+    """
+    detections_file = OUTPUT_DIR / f"{month}.csv"
+    if not detections_file.exists():
+        logger.warning(f"No detections file found for {month}")
+        return []
+
+    hourly_events: List[HourlyLogbookEvent] = []
+    grouped: Dict[Tuple[str, str, str, int], List[Dict]] = {}
+
+    # Read and group detections
+    with open(detections_file, "r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # Parse timestamp_pacific to extract date and hour
+            timestamp_pacific = row["timestamp_pacific"]
+            try:
+                # Parse the ISO timestamp
+                dt = datetime.fromisoformat(timestamp_pacific.replace("Z", "+00:00"))
+                # Convert to Pacific timezone if not already
+                if dt.tzinfo is None:
+                    pacific_tz = pytz.timezone("US/Pacific")
+                    dt = pacific_tz.localize(dt)
+                else:
+                    pacific_tz = pytz.timezone("US/Pacific")
+                    dt = dt.astimezone(pacific_tz)
+
+                date_pacific = dt.strftime("%Y-%m-%d")
+                hour_pacific = dt.hour
+
+                # Round to hour start
+                rounded_dt = dt.replace(minute=0, second=0, microsecond=0)
+                timestamp_pacific_rounded = rounded_dt.isoformat()
+                timestamp_unix = int(rounded_dt.timestamp())
+
+                key = (row["source"], row["location_slug"], date_pacific, hour_pacific)
+                if key not in grouped:
+                    grouped[key] = []
+                grouped[key].append({
+                    "row": row,
+                    "timestamp_pacific_rounded": timestamp_pacific_rounded,
+                    "timestamp_unix": timestamp_unix,
+                })
+            except Exception as e:
+                logger.warning(f"Failed to parse timestamp {timestamp_pacific}: {e}")
+                continue
+
+    # Create hourly events from groups
+    for (source, location_slug, date_pacific, hour_pacific), items in grouped.items():
+        detection_count = len(items)
+        detection_positive_count = sum(
+            1 for item in items
+            if item["row"].get("srkw_positive", "").strip().lower() == "true"
+        )
+
+        # Determine srkw_positive based on source-specific threshold
+        if source == "orcahello":
+            srkw_positive = detection_positive_count >= ORCAHELLO_HOURLY_DETECTION_THRESHOLD
+        elif source == "orcasound":
+            srkw_positive = detection_positive_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
+        else:
+            srkw_positive = False
+
+        # Concatenate detection IDs
+        detection_ids = ";".join(item["row"]["detection_id"] for item in items)
+
+        # Concatenate non-empty comments
+        comments_list = [
+            item["row"].get("comments", "").strip()
+            for item in items
+            if item["row"].get("comments", "").strip()
+        ]
+        comments = ";".join(comments_list)
+
+        event = HourlyLogbookEvent(
+            source=source,
+            location_slug=location_slug,
+            date_pacific=date_pacific,
+            hour_pacific=hour_pacific,
+            timestamp_pacific=items[0]["timestamp_pacific_rounded"],
+            timestamp_unix=items[0]["timestamp_unix"],
+            detection_count=detection_count,
+            detection_positive_count=detection_positive_count,
+            srkw_positive=srkw_positive,
+            detection_ids=detection_ids,
+            comments=comments,
+        )
+        hourly_events.append(event)
+
+    # Sort by timestamp
+    hourly_events.sort(key=lambda x: x.timestamp_unix)
+    return hourly_events
+
+
+def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
+    """
+    Aggregate hourly events to daily events.
+
+    Args:
+        month: Month string (YYYY-MM)
+
+    Returns:
+        List of DailyLogbookEvent objects
+    """
+    hourly_file = HOURLY_DIR / f"{month}.csv"
+    if not hourly_file.exists():
+        logger.warning(f"No hourly events file found for {month}")
+        return []
+
+    daily_events: List[DailyLogbookEvent] = []
+    grouped: Dict[Tuple[str, str, str], List[Dict]] = {}
+
+    # Read and group hourly events
+    with open(hourly_file, "r", newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            key = (row["source"], row["location_slug"], row["date_pacific"])
+            if key not in grouped:
+                grouped[key] = []
+            grouped[key].append(row)
+
+    # Create daily events from groups
+    for (source, location_slug, date_pacific), items in grouped.items():
+        hourly_event_count = len(items)
+        hourly_event_positive_count = sum(
+            1 for item in items
+            if item.get("srkw_positive", "").strip().lower() == "true"
+        )
+
+        # Sum detection counts
+        detection_count = sum(int(item.get("detection_count", 0)) for item in items)
+        detection_positive_count = sum(
+            int(item.get("detection_positive_count", 0)) for item in items
+        )
+
+        # Concatenate all detection IDs
+        all_detection_ids = []
+        for item in items:
+            ids = item.get("detection_ids", "").split(";")
+            all_detection_ids.extend([id for id in ids if id.strip()])
+        detection_ids = ";".join(all_detection_ids)
+
+        # Concatenate all non-empty comments
+        all_comments = []
+        for item in items:
+            comments = item.get("comments", "").strip()
+            if comments:
+                comment_list = comments.split(";")
+                all_comments.extend([c.strip() for c in comment_list if c.strip()])
+        comments = ";".join(all_comments)
+
+        event = DailyLogbookEvent(
+            source=source,
+            location_slug=location_slug,
+            date_pacific=date_pacific,
+            hourly_event_count=hourly_event_count,
+            hourly_event_positive_count=hourly_event_positive_count,
+            detection_count=detection_count,
+            detection_positive_count=detection_positive_count,
+            detection_ids=detection_ids,
+            comments=comments,
+        )
+        daily_events.append(event)
+
+    # Sort by date
+    daily_events.sort(key=lambda x: x.date_pacific)
+    return daily_events
+
+
+def write_hourly_csv(path: Path, events: List[HourlyLogbookEvent]) -> None:
+    """Write hourly events to CSV file."""
+    if not events:
+        return
+
+    fieldnames = list(HourlyLogbookEvent.model_fields.keys())
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for event in events:
+            row = event.model_dump()
+            # Convert bool to lowercase string for CSV
+            row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
+            # Convert None to empty string
+            row = {k: ("" if v is None else v) for k, v in row.items()}
+            writer.writerow(row)
+
+
+def write_daily_csv(path: Path, events: List[DailyLogbookEvent]) -> None:
+    """Write daily events to CSV file."""
+    if not events:
+        return
+
+    fieldnames = list(DailyLogbookEvent.model_fields.keys())
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for event in events:
+            row = event.model_dump()
+            # Convert None to empty string
+            row = {k: ("" if v is None else v) for k, v in row.items()}
+            writer.writerow(row)
+
+
+def concatenate_hourly_csvs(months: List[str]) -> int:
+    """
+    Concatenate all monthly hourly CSV files into a single file with a year_month column.
+
+    Args:
+        months: List of month strings (YYYY-MM) to concatenate
+
+    Returns:
+        Total number of rows written
+    """
+    output_file = HOURLY_DIR / "all_hourly_events.csv"
+    total_rows = 0
+
+    fieldnames = ["year_month"] + list(HourlyLogbookEvent.model_fields.keys())
+
+    with open(output_file, "w", newline="", encoding="utf-8") as outf:
+        writer = csv.DictWriter(outf, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for month in sorted(months):
+            month_file = HOURLY_DIR / f"{month}.csv"
+            if not month_file.exists():
+                continue
+
+            with open(month_file, "r", newline="", encoding="utf-8") as inf:
+                reader = csv.DictReader(inf)
+                for row in reader:
+                    row["year_month"] = month
+                    writer.writerow(row)
+                    total_rows += 1
+
+    logger.info(f"Concatenated {total_rows} hourly event rows into {output_file}")
+    return total_rows
+
+
+def concatenate_daily_csvs(months: List[str]) -> int:
+    """
+    Concatenate all monthly daily CSV files into a single file with a year_month column.
+
+    Args:
+        months: List of month strings (YYYY-MM) to concatenate
+
+    Returns:
+        Total number of rows written
+    """
+    output_file = DAILY_DIR / "all_daily_events.csv"
+    total_rows = 0
+
+    fieldnames = ["year_month"] + list(DailyLogbookEvent.model_fields.keys())
+
+    with open(output_file, "w", newline="", encoding="utf-8") as outf:
+        writer = csv.DictWriter(outf, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for month in sorted(months):
+            month_file = DAILY_DIR / f"{month}.csv"
+            if not month_file.exists():
+                continue
+
+            with open(month_file, "r", newline="", encoding="utf-8") as inf:
+                reader = csv.DictReader(inf)
+                for row in reader:
+                    row["year_month"] = month
+                    writer.writerow(row)
+                    total_rows += 1
+
+    logger.info(f"Concatenated {total_rows} daily event rows into {output_file}")
     return total_rows
 
 
@@ -483,7 +774,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--concat",
         action="store_true",
-        help="Also create a concatenated all_detections.csv with a month column.",
+        help="Also create a concatenated all_detections.csv with a year_month column.",
+    )
+    parser.add_argument(
+        "--aggregate",
+        action="store_true",
+        help="Generate hourly and daily event CSVs after processing detections.",
+    )
+    parser.add_argument(
+        "--aggregate-only",
+        action="store_true",
+        help="Skip detection processing, only run aggregation on existing detection CSVs.",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging."
@@ -503,10 +804,22 @@ def main() -> None:
         return
 
     # Determine months to process
-    available_months = get_available_months()
-    if not available_months:
-        logger.warning("No cached data found. Run fetch scripts first.")
-        return
+    if args.aggregate_only:
+        # Get months from existing detection CSVs
+        available_months = set()
+        if OUTPUT_DIR.exists():
+            for csv_file in OUTPUT_DIR.glob("*.csv"):
+                if csv_file.name != "all_detections.csv" and re.match(r"\d{4}-\d{2}\.csv", csv_file.name):
+                    available_months.add(csv_file.stem)
+        if not available_months:
+            logger.warning("No detection CSV files found. Run detection processing first.")
+            return
+    else:
+        # Get months from cache
+        available_months = get_available_months()
+        if not available_months:
+            logger.warning("No cached data found. Run fetch scripts first.")
+            return
 
     # Filter by date range if specified
     if args.from_date or args.to_date:
@@ -529,31 +842,64 @@ def main() -> None:
         logger.info("No months to process in the specified range.")
         return
 
-    logger.info(f"Processing {len(months_to_process)} months...")
-
-    # Process each month and collect stats
+    # Process detections (unless aggregate-only)
     total_oh, total_os, total_combined = 0, 0, 0
     month_stats: Dict[str, Dict[str, int]] = {}
-    for month in months_to_process:
-        oh, os, combined = process_month(
-            month, locations.name_to_slug, dry_run=args.dry_run
-        )
-        total_oh += oh
-        total_os += os
-        total_combined += combined
-        month_stats[month] = {"orcahello": oh, "orcasound": os, "total": combined}
+    
+    if not args.aggregate_only:
+        logger.info(f"Processing {len(months_to_process)} months...")
+        for month in months_to_process:
+            oh, os, combined = process_month(
+                month, locations.name_to_slug, dry_run=args.dry_run
+            )
+            total_oh += oh
+            total_os += os
+            total_combined += combined
+            month_stats[month] = {"orcahello": oh, "orcasound": os, "total": combined}
 
-    # Write metadata
-    if not args.dry_run:
-        write_metadata(total_oh, total_os, total_combined, month_stats)
+        # Write metadata
+        if not args.dry_run:
+            write_metadata(total_oh, total_os, total_combined, month_stats)
+
+            # Concatenate if requested
+            if args.concat:
+                concatenate_monthly_csvs(list(month_stats.keys()))
+
+        logger.info(
+            f"Done! Processed {total_oh} OrcaHello + {total_os} Orcasound = {total_combined} total detections"
+        )
+
+    # Run aggregation if requested
+    if args.aggregate or args.aggregate_only:
+        logger.info(f"Aggregating {len(months_to_process)} months to hourly and daily events...")
+        
+        processed_months = []
+        for month in months_to_process:
+            # Aggregate to hourly
+            hourly_events = aggregate_detections_to_hourly(month)
+            if hourly_events and not args.dry_run:
+                ensure_directory(HOURLY_DIR)
+                hourly_file = HOURLY_DIR / f"{month}.csv"
+                write_hourly_csv(hourly_file, hourly_events)
+                logger.info(f"  {month}: {len(hourly_events)} hourly events → {hourly_file}")
+
+            # Aggregate to daily
+            daily_events = aggregate_hourly_to_daily(month)
+            if daily_events and not args.dry_run:
+                ensure_directory(DAILY_DIR)
+                daily_file = DAILY_DIR / f"{month}.csv"
+                write_daily_csv(daily_file, daily_events)
+                logger.info(f"  {month}: {len(daily_events)} daily events → {daily_file}")
+
+            if hourly_events or daily_events:
+                processed_months.append(month)
 
         # Concatenate if requested
-        if args.concat:
-            concatenate_monthly_csvs(list(month_stats.keys()))
+        if args.concat and not args.dry_run and processed_months:
+            concatenate_hourly_csvs(processed_months)
+            concatenate_daily_csvs(processed_months)
 
-    logger.info(
-        f"Done! Processed {total_oh} OrcaHello + {total_os} Orcasound = {total_combined} total detections"
-    )
+        logger.info(f"Aggregation complete for {len(processed_months)} months.")
 
 
 if __name__ == "__main__":

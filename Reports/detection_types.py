@@ -159,3 +159,31 @@ class CombinedDetection(BaseModel):
     meta_orcasound_category: Optional[str] = None
     meta_orcasound_hls_timestamp: Optional[int] = None
     meta_orcasound_hls_offset: Optional[str] = None
+
+
+class HourlyLogbookEvent(BaseModel):
+    """Hourly aggregated event from detections"""
+    source: str  # "orcahello" or "orcasound"
+    location_slug: str  # Standardized location slug
+    date_pacific: str  # YYYY-MM-DD in Pacific time
+    hour_pacific: int  # Hour (0-23) in Pacific time
+    timestamp_pacific: str  # Rounded hour timestamp (YYYY-MM-DDTHH:00:00-08:00 or -07:00)
+    timestamp_unix: int  # Unix epoch of the rounded hour
+    detection_count: int  # Total detections in this hour
+    detection_positive_count: int  # Count of srkw_positive=true detections
+    srkw_positive: bool  # Whether hour is considered positive based on source-specific threshold
+    detection_ids: str  # Semicolon-delimited list of detection IDs
+    comments: str  # Semicolon-delimited concatenated comments
+
+
+class DailyLogbookEvent(BaseModel):
+    """Daily aggregated event from hourly events"""
+    source: str  # "orcahello" or "orcasound"
+    location_slug: str  # Standardized location slug
+    date_pacific: str  # YYYY-MM-DD in Pacific time
+    hourly_event_count: int  # Number of distinct hours with activity
+    hourly_event_positive_count: int  # Count of hourly events where srkw_positive=True
+    detection_count: int  # Total detections for the day
+    detection_positive_count: int  # Count of srkw_positive=true detections
+    detection_ids: str  # Semicolon-delimited list of all detection IDs
+    comments: str  # Semicolon-delimited concatenated comments
