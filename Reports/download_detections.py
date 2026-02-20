@@ -20,14 +20,18 @@ Directory structure:
 """
 
 import argparse
+import io
+import json
 import logging
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import requests
+import soundfile as sf
 from requests.adapters import HTTPAdapter
 from tqdm import tqdm
 from urllib3.util.retry import Retry
@@ -37,6 +41,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_CACHE_DIR = Path("./fetch_cache/orcahello")
 DEFAULT_OUTPUT_DIR = Path("./detection_downloads")
 DEFAULT_DELAY = 0.1
+DEFAULT_BATCH_SIZE = 16
+DEFAULT_WORKERS = 8
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -119,8 +125,6 @@ def classify_detection(detection: dict) -> str:
 
 def load_detections(cache_dir: Path, month: str) -> List[dict]:
     """Load detections from cache for a month."""
-    import json
-
     month_dir = cache_dir / month
     detections_file = month_dir / "raw_detections.json"
 
@@ -132,24 +136,51 @@ def load_detections(cache_dir: Path, month: str) -> List[dict]:
         return json.load(f)
 
 
-def download_file(
+def download_wav_as_flac(
     session: requests.Session,
     url: str,
     output_path: Path,
     timeout: int = 30,
 ) -> bool:
-    """Download a file from URL to output path.
+    """Download WAV from URL, convert to FLAC in memory, write to output_path.
 
     Returns True on success, False on failure.
     """
     try:
-        response = session.get(url, timeout=timeout, stream=True)
+        response = session.get(url, timeout=timeout)
+        response.raise_for_status()
+
+        # Read WAV from response bytes into memory
+        wav_bytes = io.BytesIO(response.content)
+        data, samplerate = sf.read(wav_bytes)
+
+        # Write FLAC to disk
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        sf.write(output_path, data, samplerate, format="FLAC")
+
+        return True
+    except Exception as e:
+        logger.error(f"Failed to download/convert {url}: {e}")
+        return False
+
+
+def download_png(
+    session: requests.Session,
+    url: str,
+    output_path: Path,
+    timeout: int = 30,
+) -> bool:
+    """Download PNG from URL to output_path.
+
+    Returns True on success, False on failure.
+    """
+    try:
+        response = session.get(url, timeout=timeout)
         response.raise_for_status()
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+            f.write(response.content)
 
         return True
     except Exception as e:
@@ -157,18 +188,82 @@ def download_file(
         return False
 
 
+def download_detection(
+    detection: dict,
+    output_dir: Path,
+    month: str,
+    download_wav: bool,
+    download_spectrogram: bool,
+    categories: Optional[List[str]],
+    dry_run: bool,
+) -> Tuple[str, bool]:
+    """Download a single detection's files.
+
+    Returns (status_message, success_flag)
+    """
+    det_id = detection.get("id", "unknown")
+    category = classify_detection(detection)
+
+    # Filter by category if specified
+    if categories and category not in categories:
+        return ("skipped", False)
+
+    month_output = output_dir / month / category
+
+    # Prepare file paths
+    audio_url = detection.get("audioUri", "")
+    spec_url = detection.get("spectrogramUri", "")
+
+    wav_stem = audio_url.rsplit("/", 1)[-1].rsplit(".", 1)[0] if audio_url else det_id
+    png_stem = spec_url.rsplit("/", 1)[-1].rsplit(".", 1)[0] if spec_url else det_id
+
+    flac_name = f"{wav_stem}--{det_id}.flac"
+    png_name = f"{png_stem}--{det_id}.png"
+
+    flac_path = month_output / flac_name
+    png_path = month_output / png_name
+
+    if dry_run:
+        return (f"[DRY RUN] {flac_name}", True)
+
+    # Create session for this thread
+    session = create_http_session()
+
+    # Download WAV as FLAC
+    if download_wav and audio_url:
+        if flac_path.exists():
+            logger.debug(f"Skipping existing: {flac_name}")
+        else:
+            if download_wav_as_flac(session, audio_url, flac_path):
+                logger.debug(f"Downloaded: {flac_name}")
+            else:
+                return (f"Failed WAV: {flac_name}", False)
+
+    # Download spectrogram
+    if download_spectrogram and spec_url:
+        if png_path.exists():
+            logger.debug(f"Skipping existing: {png_name}")
+        else:
+            if download_png(session, spec_url, png_path):
+                logger.debug(f"Downloaded: {png_name}")
+            else:
+                return (f"Failed PNG: {png_name}", False)
+
+    return ("ok", True)
+
+
 def process_month(
-    session: requests.Session,
     cache_dir: Path,
     output_dir: Path,
     month: str,
     download_wav: bool,
     download_spectrogram: bool,
     categories: Optional[List[str]],
-    delay: float,
+    batch_size: int,
+    workers: int,
     dry_run: bool,
 ) -> Tuple[int, int, int]:
-    """Process detections for a single month.
+    """Process detections for a single month using batched parallel downloads.
 
     Returns (processed_count, downloaded_count, skipped_count)
     """
@@ -180,59 +275,31 @@ def process_month(
     downloaded = 0
     skipped = 0
 
-    for detection in tqdm(detections, desc=month, unit="detection"):
-        det_id = detection.get("id", "unknown")
-        category = classify_detection(detection)
+    # Process in batches with threadpool
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        # Submit all detections
+        futures = []
+        for detection in detections:
+            future = executor.submit(
+                download_detection,
+                detection,
+                output_dir,
+                month,
+                download_wav,
+                download_spectrogram,
+                categories,
+                dry_run,
+            )
+            futures.append(future)
 
-        # Filter by category if specified
-        if categories and category not in categories:
-            skipped += 1
-            continue
-
-        processed += 1
-        month_output = output_dir / month / category
-
-        # Prepare file paths — use original filenames from URLs (e.g. rpi_andrews_bay_2026_02_17_..._PST.wav)
-        audio_url = detection.get("audioUri", "")
-        spec_url = detection.get("spectrogramUri", "")
-
-        wav_name = audio_url.rsplit("/", 1)[-1] if audio_url else f"{det_id}.wav"
-        png_name = spec_url.rsplit("/", 1)[-1] if spec_url else f"{det_id}.png"
-
-        wav_path = month_output / wav_name
-        png_path = month_output / png_name
-
-        if dry_run:
-            logger.debug(f"[DRY RUN] Would download: {wav_name} -> {category}")
-            if download_wav and audio_url:
-                logger.debug(f"  WAV: {audio_url}")
-            if download_spectrogram and spec_url:
-                logger.debug(f"  PNG: {spec_url}")
-            downloaded += 1
-            continue
-
-        # Download WAV
-        if download_wav and audio_url:
-            if wav_path.exists():
-                logger.debug(f"Skipping existing: {wav_name}")
-            else:
-                if download_file(session, audio_url, wav_path):
-                    logger.debug(f"Downloaded: {wav_name}")
-                    downloaded += 1
-                if delay > 0:
-                    time.sleep(delay)
-
-        # Download spectrogram
-        if download_spectrogram and spec_url:
-            if png_path.exists():
-                logger.debug(f"Skipping existing: {png_name}")
-            else:
-                if download_file(session, spec_url, png_path):
-                    logger.debug(f"Downloaded: {png_name}")
-                    if not download_wav:  # Only count once
-                        downloaded += 1
-                if delay > 0:
-                    time.sleep(delay)
+        # Collect results with progress bar
+        for future in tqdm(as_completed(futures), total=len(futures), desc=month, unit="detection"):
+            status, success = future.result()
+            processed += 1
+            if status == "skipped":
+                skipped += 1
+            elif success:
+                downloaded += 1
 
     return processed, downloaded, skipped
 
@@ -295,12 +362,18 @@ def parse_args() -> argparse.Namespace:
         help="Filter by category (can specify multiple). Default: all categories",
     )
 
-    # Rate limiting
+    # Parallelism options
     parser.add_argument(
-        "--delay",
-        type=float,
-        default=DEFAULT_DELAY,
-        help=f"Delay between downloads in seconds (default: {DEFAULT_DELAY})",
+        "--batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help=f"Batch size for parallel downloads (default: {DEFAULT_BATCH_SIZE})",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Number of parallel download threads (default: {DEFAULT_WORKERS})",
     )
 
     # Output options
@@ -356,18 +429,16 @@ def main() -> int:
         logger.error("Nothing to download: both --no-wav and --no-spec specified")
         return 1
 
-    logger.info(f"Download WAV: {download_wav}")
+    logger.info(f"Download WAV (as FLAC): {download_wav}")
     logger.info(f"Download spectrogram: {download_spectrogram}")
     if categories:
         logger.info(f"Categories: {categories}")
     else:
         logger.info("Categories: all")
+    logger.info(f"Workers: {args.workers}, Batch size: {args.batch_size}")
 
     if args.dry_run:
         logger.info("[DRY RUN MODE]")
-
-    # Create session and process
-    session = create_http_session()
 
     total_processed = 0
     total_downloaded = 0
@@ -377,14 +448,14 @@ def main() -> int:
         logger.info(f"\n--- Processing {month} ---")
 
         processed, downloaded, skipped = process_month(
-            session=session,
             cache_dir=args.cache_dir,
             output_dir=args.output_dir,
             month=month,
             download_wav=download_wav,
             download_spectrogram=download_spectrogram,
             categories=categories,
-            delay=args.delay,
+            batch_size=args.batch_size,
+            workers=args.workers,
             dry_run=args.dry_run,
         )
 
