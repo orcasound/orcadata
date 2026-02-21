@@ -24,7 +24,6 @@ import io
 import json
 import logging
 import sys
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -40,8 +39,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = Path("./fetch_cache/orcahello")
 DEFAULT_OUTPUT_DIR = Path("./detection_downloads")
-DEFAULT_DELAY = 0.1
-DEFAULT_BATCH_SIZE = 16
 DEFAULT_WORKERS = 8
 
 
@@ -259,7 +256,6 @@ def process_month(
     download_wav: bool,
     download_spectrogram: bool,
     categories: Optional[List[str]],
-    batch_size: int,
     workers: int,
     dry_run: bool,
 ) -> Tuple[int, int, int]:
@@ -364,12 +360,6 @@ def parse_args() -> argparse.Namespace:
 
     # Parallelism options
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=DEFAULT_BATCH_SIZE,
-        help=f"Batch size for parallel downloads (default: {DEFAULT_BATCH_SIZE})",
-    )
-    parser.add_argument(
         "--workers",
         type=int,
         default=DEFAULT_WORKERS,
@@ -435,7 +425,7 @@ def main() -> int:
         logger.info(f"Categories: {categories}")
     else:
         logger.info("Categories: all")
-    logger.info(f"Workers: {args.workers}, Batch size: {args.batch_size}")
+    logger.info(f"Workers: {args.workers}")
 
     if args.dry_run:
         logger.info("[DRY RUN MODE]")
@@ -454,7 +444,6 @@ def main() -> int:
             download_wav=download_wav,
             download_spectrogram=download_spectrogram,
             categories=categories,
-            batch_size=args.batch_size,
             workers=args.workers,
             dry_run=args.dry_run,
         )
