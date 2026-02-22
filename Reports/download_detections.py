@@ -11,15 +11,20 @@ Directory structure:
   output_dir/
     YYYY-MM/
       positive/
-        <detection_id>.wav
+        <detection_id>.flac
         <detection_id>.png
       false_positive/
         ...
       unmoderated/
         ...
+      unknown/
+        ...
+      ground_truth_labels.csv   # written after download (positive/false_positive .flac only)
+      summary.txt               # audio (.flac) file counts per subfolder
 """
 
 import argparse
+import csv
 import io
 import json
 import logging
@@ -40,6 +45,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CACHE_DIR = Path("./fetch_cache/orcahello")
 DEFAULT_OUTPUT_DIR = Path("./detection_downloads")
 DEFAULT_WORKERS = 8
+AUDIO_EXT = ".flac"
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -300,6 +306,48 @@ def process_month(
     return processed, downloaded, skipped
 
 
+def write_ground_truth_csv(month_dir: Path) -> None:
+    """Write ground_truth_labels.csv from positive/ and false_positive/ (audio files only)."""
+    label_folders = ("positive", "false_positive")
+    rows: List[Tuple[str, int, str]] = []
+    ext = AUDIO_EXT.lower()
+    for folder in label_folders:
+        dirpath = month_dir / folder
+        if not dirpath.is_dir():
+            continue
+        label_binary = 1 if folder == "positive" else 0
+        for entry in sorted(dirpath.iterdir()):
+            if not entry.is_file() or entry.suffix.lower() != ext:
+                continue
+            rel_path = f"{folder}/{entry.name}"
+            rows.append((rel_path, label_binary, folder))
+    outpath = month_dir / "ground_truth_labels.csv"
+    with open(outpath, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["file_path", "label_binary", "label"])
+        w.writerows(rows)
+    logger.info(f"Wrote {len(rows)} rows to {outpath}")
+
+
+def write_summary_txt(month_dir: Path) -> None:
+    """Write summary.txt with audio file counts per subfolder (extension from AUDIO_EXT)."""
+    ext = AUDIO_EXT.lower()
+    counts: List[Tuple[str, int]] = []
+    total = 0
+    for subdir in sorted(month_dir.iterdir()):
+        if not subdir.is_dir() or subdir.name.startswith("."):
+            continue
+        n = sum(1 for e in subdir.iterdir() if e.is_file() and e.suffix.lower() == ext)
+        counts.append((subdir.name, n))
+        total += n
+    lines = [f"Audio ({AUDIO_EXT}) counts per subfolder:", ""]
+    lines.extend(f"{name}: {n}" for name, n in counts)
+    lines.append(f"Total: {total}")
+    outpath = month_dir / "summary.txt"
+    outpath.write_text("\n".join(lines) + "\n")
+    logger.info(f"Wrote summary to {outpath}")
+
+
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
@@ -452,6 +500,13 @@ def main() -> int:
         total_processed += processed
         total_downloaded += downloaded
         total_skipped += skipped
+
+        # Write ground_truth_labels.csv and summary.txt for this month (skip in dry run)
+        if not args.dry_run:
+            month_dir = args.output_dir / month
+            if month_dir.exists():
+                write_ground_truth_csv(month_dir)
+                write_summary_txt(month_dir)
 
     logger.info(f"\n{'[DRY RUN] ' if args.dry_run else ''}Download complete!")
     logger.info(f"  Total processed: {total_processed}")
