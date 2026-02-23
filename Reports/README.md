@@ -204,21 +204,6 @@ python fetch_orcahello.py
    - Updates cache with new data
    - Useful if API data was corrected/updated
 
-### Error Recovery
-
-Network Failures:
-- Successfully fetched months are saved before crash
-- Re-running the script skips cached months and continues
-- Uses exponential backoff retry (5 retries per request)
-
-Invalid Data:
-- Validation errors are logged but don't stop the script
-- Invalid records are skipped
-- Check `metadata.jsonl` for validation errors
-
-Partial Fetches:
-- Current month: always refetched (expected behavior)
-- Past months with `complete: false`: automatically refetched
 
 ### Performance Notes
 
@@ -295,14 +280,18 @@ python preprocess_detections.py --dry-run
 **What it does:**
 1. Builds a unified hydrophone locations mapping (saved to `fetch_cache/hydrophone_locations.json`)
 2. Converts raw detections from both sources into a standardized `CombinedDetection` format
-3. Filters OrcaHello to `reviewed=true` and Orcasound to `source=HUMAN`
+3. Creates three source types:
+   - `orcahello_moderated`: OrcaHello detections with `reviewed=true`
+   - `orcahello_unmoderated`: OrcaHello detections with `reviewed=false` (all treated as positive)
+   - `orcasound`: Orcasound detections with `source=HUMAN`
 4. Outputs per-month CSV files to `combined_logbook/detections/`
 5. With `--aggregate`: creates hourly and daily event CSVs in `combined_logbook/hourly_events/` and `combined_logbook/daily_events/`
 6. With `--concat`: creates combined `all_detections.csv`, `all_hourly_events.csv`, `all_daily_events.csv`
 
 **Aggregation thresholds for `srkw_positive`:**
-- OrcaHello: ≥1 positive detection per hour (moderated, higher confidence)
-- Orcasound: ≥3 positive detections per hour (unmoderated, requires more signals)
+- `orcahello_moderated`: ≥1 positive detection per hour (moderated, higher confidence)
+- `orcahello_unmoderated`: ≥3 detections per hour (unmoderated, same threshold as orcasound)
+- `orcasound`: ≥3 positive detections per hour (unmoderated, requires more signals)
 
 See [Data Models](./data_models.md) for details on output schemas.
 

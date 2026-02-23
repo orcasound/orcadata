@@ -29,12 +29,15 @@ Unified location mapping across sources.
 
 ### CombinedDetection
 Standardized detection record for CSV export.
-- `source`: "orcahello" or "orcasound"
+- `source`: "orcahello_moderated", "orcahello_unmoderated", or "orcasound"
 - `detection_id`: original source ID
 - Timestamps: `timestamp_utc`, `timestamp_unix`, `timestamp_pacific`
 - Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD)
 - `location_slug`: standardized slug
-- `srkw_positive`: true if whale confirmed (OrcaHello `found="Yes"` or Orcasound `category="WHALE"`)
+- `srkw_positive`: determination depends on source:
+  - `orcahello_moderated`: true if `found="Yes"` (moderator confirmed)
+  - `orcahello_unmoderated`: always true (no moderator rejected)
+  - `orcasound`: true if `category="WHALE"`
 - `comments`
 - Source-specific metadata: `meta_orcahello_*`, `meta_orcasound_*`
 
@@ -43,7 +46,10 @@ Aggregated by (source, location, date, hour) in Pacific time.
 - Timestamps: `timestamp_pacific`, `timestamp_unix`
 - Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD), `hour_pacific`
 - Counts: `detection_count`, `detection_positive_count`
-- `srkw_positive`: true if threshold met (OrcaHello ≥1, Orcasound ≥3)
+- `srkw_positive`: true if threshold met per source:
+  - `orcahello_moderated`: ≥1 positive detection
+  - `orcahello_unmoderated`: ≥3 detections (same threshold as orcasound)
+  - `orcasound`: ≥3 positive detections
 - `detection_ids`, `comments` (semicolon-delimited)
 
 ### DailyLogbookEvent

@@ -48,7 +48,8 @@ DAILY_DIR = Path("./combined_logbook/daily_events")
 LOCATIONS_FILE = CACHE_DIR / "hydrophone_locations.json"
 
 # Source-specific thresholds for determining hourly srkw_positive
-ORCAHELLO_HOURLY_DETECTION_THRESHOLD = 1  # OrcaHello detections are moderated, so >= 1 positive is significant
+ORCAHELLO_MODERATED_HOURLY_THRESHOLD = 1  # OrcaHello moderated detections: >= 1 positive is significant
+ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD = 3  # OrcaHello unmoderated: >= 3 detections (same as orcasound)
 ORCASOUND_HOURLY_DETECTION_THRESHOLD = 3  # Orcasound detections are not moderated, so >= 3 positives needed
 
 # Manual alias mappings for names that don't auto-match
@@ -220,9 +221,18 @@ def load_or_build_locations(force: bool = False) -> HydrophoneLocationsFile:
 
 
 def convert_orcahello_detection(
-    det: Dict, name_to_slug: Dict[str, str]
+    det: Dict, name_to_slug: Dict[str, str], moderated: bool = True
 ) -> Optional[CombinedDetection]:
-    """Convert OrcaHello detection to combined format."""
+    """
+    Convert OrcaHello detection to combined format.
+
+    Args:
+        det: Raw detection dict from OrcaHello API
+        name_to_slug: Location name to slug mapping
+        moderated: If True, source is "orcahello_moderated" and srkw_positive
+                   is based on found field. If False, source is "orcahello_unmoderated"
+                   and srkw_positive is always True.
+    """
     # Parse and convert timestamp
     timestamp_utc = det["timestamp"]
     try:
@@ -238,9 +248,16 @@ def convert_orcahello_detection(
     else:
         location_slug = f"unmapped_{normalize_to_slug(loc_name)}"
 
-    # Determine srkw_positive (found == "Yes" case-insensitive)
-    found_val = det.get("found", "")
-    srkw_positive = found_val.lower() == "yes" if found_val else False
+    # Determine source and srkw_positive
+    if moderated:
+        source = "orcahello_moderated"
+        # srkw_positive based on moderator verdict (found == "Yes")
+        found_val = det.get("found", "")
+        srkw_positive = found_val.lower() == "yes" if found_val else False
+    else:
+        source = "orcahello_unmoderated"
+        # Unmoderated detections are treated as positive (no moderator said "No")
+        srkw_positive = True
 
     # Extract date fields from Pacific timestamp
     date_pacific = pst_dt.strftime("%Y-%m-%d")
@@ -249,7 +266,7 @@ def convert_orcahello_detection(
     year_month_pacific = pst_dt.strftime("%Y-%m")
 
     return CombinedDetection(
-        source="orcahello",
+        source=source,
         detection_id=det["id"],
         timestamp_utc=timestamp_utc,
         timestamp_unix=int(pst_dt.timestamp()),
@@ -335,28 +352,34 @@ def get_available_months() -> Set[str]:
 
 def process_month(
     month: str, name_to_slug: Dict[str, str], dry_run: bool = False
-) -> Tuple[int, int, int]:
+) -> Tuple[int, int, int, int]:
     """
     Process a single month of detections.
 
     Returns:
-        Tuple of (orcahello_count, orcasound_count, total_combined)
+        Tuple of (orcahello_moderated_count, orcahello_unmoderated_count, orcasound_count, total_combined)
     """
     combined: List[CombinedDetection] = []
 
-    # Process OrcaHello detections
+    # Process OrcaHello detections (both moderated and unmoderated)
     oh_file = ORCAHELLO_CACHE / month / "raw_detections.json"
-    oh_count = 0
+    oh_moderated_count = 0
+    oh_unmoderated_count = 0
     if oh_file.exists():
         data = read_json(oh_file)
         for det in data:
-            # Filter: only reviewed detections
-            if not det.get("reviewed"):
-                continue
-            converted = convert_orcahello_detection(det, name_to_slug)
-            if converted:
-                combined.append(converted)
-                oh_count += 1
+            if det.get("reviewed"):
+                # Moderated detection
+                converted = convert_orcahello_detection(det, name_to_slug, moderated=True)
+                if converted:
+                    combined.append(converted)
+                    oh_moderated_count += 1
+            else:
+                # Unmoderated detection
+                converted = convert_orcahello_detection(det, name_to_slug, moderated=False)
+                if converted:
+                    combined.append(converted)
+                    oh_unmoderated_count += 1
 
     # Process Orcasound detections
     os_file = ORCASOUND_CACHE / month / "raw_detections.json"
@@ -375,11 +398,12 @@ def process_month(
     # Sort by timestamp
     combined.sort(key=lambda x: x.timestamp_unix)
 
+    total = len(combined)
     if dry_run:
         logger.info(
-            f"  [DRY RUN] {month}: {oh_count} OrcaHello + {os_count} Orcasound = {len(combined)} total"
+            f"  [DRY RUN] {month}: {oh_moderated_count} OH-mod + {oh_unmoderated_count} OH-unmod + {os_count} Orcasound = {total} total"
         )
-        return (oh_count, os_count, len(combined))
+        return (oh_moderated_count, oh_unmoderated_count, os_count, total)
 
     # Write CSV
     if combined:
@@ -387,12 +411,12 @@ def process_month(
         ensure_directory(OUTPUT_DIR)
         write_detections_csv(output_file, combined)
         logger.info(
-            f"  {month}: {oh_count} OrcaHello + {os_count} Orcasound = {len(combined)} → {output_file}"
+            f"  {month}: {oh_moderated_count} OH-mod + {oh_unmoderated_count} OH-unmod + {os_count} Orcasound = {total} → {output_file}"
         )
     else:
         logger.info(f"  {month}: No detections to write")
 
-    return (oh_count, os_count, len(combined))
+    return (oh_moderated_count, oh_unmoderated_count, os_count, total)
 
 
 def write_detections_csv(path: Path, detections: List[CombinedDetection]) -> None:
@@ -416,7 +440,8 @@ def write_detections_csv(path: Path, detections: List[CombinedDetection]) -> Non
 
 
 def write_metadata(
-    total_oh: int,
+    total_oh_moderated: int,
+    total_oh_unmoderated: int,
     total_os: int,
     total_combined: int,
     month_stats: Dict[str, Dict[str, int]],
@@ -424,7 +449,8 @@ def write_metadata(
     """Write processing metadata file."""
     metadata = {
         "last_processed": datetime.now(pytz.UTC).isoformat(),
-        "orcahello_detections": total_oh,
+        "orcahello_moderated_detections": total_oh_moderated,
+        "orcahello_unmoderated_detections": total_oh_unmoderated,
         "orcasound_detections": total_os,
         "combined_detections": total_combined,
         "months_processed": {
@@ -538,8 +564,11 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
         )
 
         # Determine srkw_positive based on source-specific threshold
-        if source == "orcahello":
-            srkw_positive = detection_positive_count >= ORCAHELLO_HOURLY_DETECTION_THRESHOLD
+        if source == "orcahello_moderated":
+            srkw_positive = detection_positive_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
+        elif source == "orcahello_unmoderated":
+            # For unmoderated, all detections are positive, so positive_count == total_count
+            srkw_positive = detection_positive_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
         elif source == "orcasound":
             srkw_positive = detection_positive_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
         else:
@@ -875,30 +904,36 @@ def main() -> None:
         return
 
     # Process detections (unless aggregate-only)
-    total_oh, total_os, total_combined = 0, 0, 0
+    total_oh_mod, total_oh_unmod, total_os, total_combined = 0, 0, 0, 0
     month_stats: Dict[str, Dict[str, int]] = {}
-    
+
     if not args.aggregate_only:
         logger.info(f"Processing {len(months_to_process)} months...")
         for month in months_to_process:
-            oh, os, combined = process_month(
+            oh_mod, oh_unmod, os, combined = process_month(
                 month, locations.name_to_slug, dry_run=args.dry_run
             )
-            total_oh += oh
+            total_oh_mod += oh_mod
+            total_oh_unmod += oh_unmod
             total_os += os
             total_combined += combined
-            month_stats[month] = {"orcahello": oh, "orcasound": os, "total": combined}
+            month_stats[month] = {
+                "orcahello_moderated": oh_mod,
+                "orcahello_unmoderated": oh_unmod,
+                "orcasound": os,
+                "total": combined,
+            }
 
         # Write metadata
         if not args.dry_run:
-            write_metadata(total_oh, total_os, total_combined, month_stats)
+            write_metadata(total_oh_mod, total_oh_unmod, total_os, total_combined, month_stats)
 
             # Concatenate if requested
             if args.concat:
                 concatenate_monthly_csvs(list(month_stats.keys()))
 
         logger.info(
-            f"Done! Processed {total_oh} OrcaHello + {total_os} Orcasound = {total_combined} total detections"
+            f"Done! Processed {total_oh_mod} OH-mod + {total_oh_unmod} OH-unmod + {total_os} Orcasound = {total_combined} total detections"
         )
 
     # Run aggregation if requested
