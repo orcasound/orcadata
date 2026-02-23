@@ -31,7 +31,8 @@ Unified location mapping across sources.
 Standardized detection record for CSV export.
 - `source`: "orcahello" or "orcasound"
 - `detection_id`: original source ID
-- `timestamp_utc`, `timestamp_unix`, `timestamp_pacific`
+- Timestamps: `timestamp_utc`, `timestamp_unix`, `timestamp_pacific`
+- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD)
 - `location_slug`: standardized slug
 - `srkw_positive`: true if whale confirmed (OrcaHello `found="Yes"` or Orcasound `category="WHALE"`)
 - `comments`
@@ -39,16 +40,17 @@ Standardized detection record for CSV export.
 
 ### HourlyLogbookEvent
 Aggregated by (source, location, date, hour) in Pacific time.
-- `date_pacific`, `hour_pacific`, `timestamp_pacific`, `timestamp_unix`
-- `detection_count`, `detection_positive_count`
+- Timestamps: `timestamp_pacific`, `timestamp_unix`
+- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD), `hour_pacific`
+- Counts: `detection_count`, `detection_positive_count`
 - `srkw_positive`: true if threshold met (OrcaHello ≥1, Orcasound ≥3)
 - `detection_ids`, `comments` (semicolon-delimited)
 
 ### DailyLogbookEvent
 Aggregated by (source, location, date) from hourly events.
-- `date_pacific`
-- `hourly_event_count`, `hourly_event_positive_count`
-- `detection_count`, `detection_positive_count`
+- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD)
+- Hourly counts: `hourly_event_count`, `hourly_event_positive_count`
+- Detection counts: `detection_count`, `detection_positive_count`
 - `detection_ids`, `comments` (semicolon-delimited)
 
 ## Output Directory Structure
@@ -56,17 +58,17 @@ Aggregated by (source, location, date) from hourly events.
 ```
 combined_logbook/
 ├── detections/
-│   ├── 2024-01.csv
+│   ├── 2024-01.csv           # Monthly CSVs are self-contained with year/month fields
 │   ├── 2024-02.csv
 │   ├── ...
-│   ├── all_detections.csv    # --concat
+│   ├── all_detections.csv    # Simple concatenation (--concat)
 │   └── metadata.json
 ├── hourly_events/
-│   ├── 2024-01.csv
+│   ├── 2024-01.csv           # Monthly CSVs are self-contained with year/month fields
 │   ├── ...
-│   └── all_hourly_events.csv # --concat
+│   └── all_hourly_events.csv # Simple concatenation (--concat)
 └── daily_events/
-    ├── 2024-01.csv
+    ├── 2024-01.csv           # Monthly CSVs are self-contained with year/month fields
     ├── ...
-    └── all_daily_events.csv  # --concat
+    └── all_daily_events.csv  # Simple concatenation (--concat)
 ```

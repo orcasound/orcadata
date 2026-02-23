@@ -242,12 +242,22 @@ def convert_orcahello_detection(
     found_val = det.get("found", "")
     srkw_positive = found_val.lower() == "yes" if found_val else False
 
+    # Extract date fields from Pacific timestamp
+    date_pacific = pst_dt.strftime("%Y-%m-%d")
+    year_pacific = pst_dt.year
+    month_pacific = pst_dt.month
+    year_month_pacific = pst_dt.strftime("%Y-%m")
+
     return CombinedDetection(
         source="orcahello",
         detection_id=det["id"],
         timestamp_utc=timestamp_utc,
         timestamp_unix=int(pst_dt.timestamp()),
         timestamp_pacific=pst_dt.isoformat(),
+        year_month_pacific=year_month_pacific,
+        year_pacific=year_pacific,
+        month_pacific=month_pacific,
+        date_pacific=date_pacific,
         location_slug=location_slug,
         srkw_positive=srkw_positive,
         comments=det.get("comments"),
@@ -281,12 +291,22 @@ def convert_orcasound_detection(
     category = det.get("category")
     srkw_positive = category == "WHALE" if category else False
 
+    # Extract date fields from Pacific timestamp
+    date_pacific = pst_dt.strftime("%Y-%m-%d")
+    year_pacific = pst_dt.year
+    month_pacific = pst_dt.month
+    year_month_pacific = pst_dt.strftime("%Y-%m")
+
     return CombinedDetection(
         source="orcasound",
         detection_id=det["id"],
         timestamp_utc=timestamp_utc,
         timestamp_unix=int(pst_dt.timestamp()),
         timestamp_pacific=pst_dt.isoformat(),
+        year_month_pacific=year_month_pacific,
+        year_pacific=year_pacific,
+        month_pacific=month_pacific,
+        date_pacific=date_pacific,
         location_slug=location_slug,
         srkw_positive=srkw_positive,
         comments=det.get("description"),
@@ -419,7 +439,7 @@ def write_metadata(
 
 def concatenate_monthly_csvs(months: List[str]) -> int:
     """
-    Concatenate all monthly CSV files into a single file with a year_month column.
+    Concatenate all monthly CSV files into a single file.
 
     Args:
         months: List of month strings (YYYY-MM) to concatenate
@@ -430,8 +450,7 @@ def concatenate_monthly_csvs(months: List[str]) -> int:
     output_file = OUTPUT_DIR / "all_detections.csv"
     total_rows = 0
 
-    # Get field names and add year_month column at the beginning
-    fieldnames = ["year_month"] + list(CombinedDetection.model_fields.keys())
+    fieldnames = list(CombinedDetection.model_fields.keys())
 
     with open(output_file, "w", newline="", encoding="utf-8") as outf:
         writer = csv.DictWriter(outf, fieldnames=fieldnames)
@@ -445,7 +464,6 @@ def concatenate_monthly_csvs(months: List[str]) -> int:
             with open(month_file, "r", newline="", encoding="utf-8") as inf:
                 reader = csv.DictReader(inf)
                 for row in reader:
-                    row["year_month"] = month
                     writer.writerow(row)
                     total_rows += 1
 
@@ -538,13 +556,21 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
         ]
         comments = ";".join(comments_list)
 
+        # Extract year and month from date_pacific (YYYY-MM-DD format)
+        year_pacific = int(date_pacific[:4])
+        month_pacific = int(date_pacific[5:7])
+        year_month_pacific = date_pacific[:7]  # YYYY-MM
+
         event = HourlyLogbookEvent(
             source=source,
             location_slug=location_slug,
-            date_pacific=date_pacific,
-            hour_pacific=hour_pacific,
             timestamp_pacific=items[0]["timestamp_pacific_rounded"],
             timestamp_unix=items[0]["timestamp_unix"],
+            year_month_pacific=year_month_pacific,
+            year_pacific=year_pacific,
+            month_pacific=month_pacific,
+            date_pacific=date_pacific,
+            hour_pacific=hour_pacific,
             detection_count=detection_count,
             detection_positive_count=detection_positive_count,
             srkw_positive=srkw_positive,
@@ -615,9 +641,17 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
                 all_comments.extend([c.strip() for c in comment_list if c.strip()])
         comments = ";".join(all_comments)
 
+        # Extract year and month from date_pacific (YYYY-MM-DD format)
+        year_pacific = int(date_pacific[:4])
+        month_pacific = int(date_pacific[5:7])
+        year_month_pacific = date_pacific[:7]  # YYYY-MM
+
         event = DailyLogbookEvent(
             source=source,
             location_slug=location_slug,
+            year_month_pacific=year_month_pacific,
+            year_pacific=year_pacific,
+            month_pacific=month_pacific,
             date_pacific=date_pacific,
             hourly_event_count=hourly_event_count,
             hourly_event_positive_count=hourly_event_positive_count,
@@ -671,7 +705,7 @@ def write_daily_csv(path: Path, events: List[DailyLogbookEvent]) -> None:
 
 def concatenate_hourly_csvs(months: List[str]) -> int:
     """
-    Concatenate all monthly hourly CSV files into a single file with a year_month column.
+    Concatenate all monthly hourly CSV files into a single file.
 
     Args:
         months: List of month strings (YYYY-MM) to concatenate
@@ -682,7 +716,7 @@ def concatenate_hourly_csvs(months: List[str]) -> int:
     output_file = HOURLY_DIR / "all_hourly_events.csv"
     total_rows = 0
 
-    fieldnames = ["year_month"] + list(HourlyLogbookEvent.model_fields.keys())
+    fieldnames = list(HourlyLogbookEvent.model_fields.keys())
 
     with open(output_file, "w", newline="", encoding="utf-8") as outf:
         writer = csv.DictWriter(outf, fieldnames=fieldnames)
@@ -696,7 +730,6 @@ def concatenate_hourly_csvs(months: List[str]) -> int:
             with open(month_file, "r", newline="", encoding="utf-8") as inf:
                 reader = csv.DictReader(inf)
                 for row in reader:
-                    row["year_month"] = month
                     writer.writerow(row)
                     total_rows += 1
 
@@ -706,7 +739,7 @@ def concatenate_hourly_csvs(months: List[str]) -> int:
 
 def concatenate_daily_csvs(months: List[str]) -> int:
     """
-    Concatenate all monthly daily CSV files into a single file with a year_month column.
+    Concatenate all monthly daily CSV files into a single file.
 
     Args:
         months: List of month strings (YYYY-MM) to concatenate
@@ -717,7 +750,7 @@ def concatenate_daily_csvs(months: List[str]) -> int:
     output_file = DAILY_DIR / "all_daily_events.csv"
     total_rows = 0
 
-    fieldnames = ["year_month"] + list(DailyLogbookEvent.model_fields.keys())
+    fieldnames = list(DailyLogbookEvent.model_fields.keys())
 
     with open(output_file, "w", newline="", encoding="utf-8") as outf:
         writer = csv.DictWriter(outf, fieldnames=fieldnames)
@@ -731,7 +764,6 @@ def concatenate_daily_csvs(months: List[str]) -> int:
             with open(month_file, "r", newline="", encoding="utf-8") as inf:
                 reader = csv.DictReader(inf)
                 for row in reader:
-                    row["year_month"] = month
                     writer.writerow(row)
                     total_rows += 1
 
