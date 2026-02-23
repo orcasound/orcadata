@@ -262,7 +262,7 @@ def convert_orcahello_detection(
     # Extract date fields from Pacific timestamp
     date_pacific = pst_dt.strftime("%Y-%m-%d")
     year_pacific = pst_dt.year
-    month_pacific = pst_dt.month
+    month_pacific = pst_dt.strftime("%m")  # Zero-padded month string (01-12)
     year_month_pacific = pst_dt.strftime("%Y-%m")
 
     return CombinedDetection(
@@ -311,7 +311,7 @@ def convert_orcasound_detection(
     # Extract date fields from Pacific timestamp
     date_pacific = pst_dt.strftime("%Y-%m-%d")
     year_pacific = pst_dt.year
-    month_pacific = pst_dt.month
+    month_pacific = pst_dt.strftime("%m")  # Zero-padded month string (01-12)
     year_month_pacific = pst_dt.strftime("%Y-%m")
 
     return CombinedDetection(
@@ -587,7 +587,7 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
 
         # Extract year and month from date_pacific (YYYY-MM-DD format)
         year_pacific = int(date_pacific[:4])
-        month_pacific = int(date_pacific[5:7])
+        month_pacific = date_pacific[5:7]  # Zero-padded month string (01-12)
         year_month_pacific = date_pacific[:7]  # YYYY-MM
 
         event = HourlyLogbookEvent(
@@ -672,8 +672,11 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
 
         # Extract year and month from date_pacific (YYYY-MM-DD format)
         year_pacific = int(date_pacific[:4])
-        month_pacific = int(date_pacific[5:7])
+        month_pacific = date_pacific[5:7]  # Zero-padded month string (01-12)
         year_month_pacific = date_pacific[:7]  # YYYY-MM
+
+        # Day is positive if any hour is positive
+        srkw_positive = hourly_event_positive_count > 0
 
         event = DailyLogbookEvent(
             source=source,
@@ -686,6 +689,7 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
             hourly_event_positive_count=hourly_event_positive_count,
             detection_count=detection_count,
             detection_positive_count=detection_positive_count,
+            srkw_positive=srkw_positive,
             detection_ids=detection_ids,
             comments=comments,
         )

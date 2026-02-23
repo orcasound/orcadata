@@ -140,7 +140,7 @@ class HydrophoneLocationsFile(BaseModel):
 
 class CombinedDetection(BaseModel):
     """Unified detection record from OrcaHello or Orcasound, for CSV export"""
-    source: str  # "orcahello" or "orcasound"
+    source: str  # orcahello_moderated | orcahello_unmoderated | orcasound
     detection_id: str  # Original ID from source API
     timestamp_utc: str  # ISO 8601 UTC timestamp
     timestamp_unix: int  # Unix epoch seconds
@@ -167,13 +167,13 @@ class CombinedDetection(BaseModel):
 
 class HourlyLogbookEvent(BaseModel):
     """Hourly aggregated event from detections"""
-    source: str  # "orcahello" or "orcasound"
+    source: str  # orcahello_moderated | orcahello_unmoderated | orcasound
     location_slug: str  # Standardized location slug
     timestamp_pacific: str  # Rounded hour timestamp (YYYY-MM-DDTHH:00:00-08:00 or -07:00)
     timestamp_unix: int  # Unix epoch of the rounded hour
     year_month_pacific: str  # YYYY-MM in Pacific time
     year_pacific: int  # Year in Pacific time
-    month_pacific: int  # Month (1-12) in Pacific time
+    month_pacific: str  # Month (01-12) in Pacific time
     date_pacific: str  # YYYY-MM-DD in Pacific time
     hour_pacific: int  # Hour (0-23) in Pacific time
     detection_count: int  # Total detections in this hour
@@ -185,11 +185,11 @@ class HourlyLogbookEvent(BaseModel):
 
 class DailyLogbookEvent(BaseModel):
     """Daily aggregated event from hourly events"""
-    source: str  # "orcahello" or "orcasound"
+    source: str  # orcahello_moderated | orcahello_unmoderated | orcasound
     location_slug: str  # Standardized location slug
     year_month_pacific: str  # YYYY-MM in Pacific time
     year_pacific: int  # Year in Pacific time
-    month_pacific: int  # Month (1-12) in Pacific time
+    month_pacific: str  # Month (01-12) in Pacific time
     date_pacific: str  # YYYY-MM-DD in Pacific time
     hourly_event_count: int  # Number of distinct hours with activity
     hourly_event_positive_count: int  # Count of hourly events where srkw_positive=True

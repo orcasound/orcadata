@@ -44,7 +44,7 @@ Standardized detection record for CSV export.
 ### HourlyLogbookEvent
 Aggregated by (source, location, date, hour) in Pacific time.
 - Timestamps: `timestamp_pacific`, `timestamp_unix`
-- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD), `hour_pacific`
+- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific` (01-12 as string), `date_pacific` (YYYY-MM-DD), `hour_pacific`
 - Counts: `detection_count`, `detection_positive_count`
 - `srkw_positive`: true if threshold met per source:
   - `orcahello_moderated`: ≥1 positive detection
@@ -54,9 +54,10 @@ Aggregated by (source, location, date, hour) in Pacific time.
 
 ### DailyLogbookEvent
 Aggregated by (source, location, date) from hourly events.
-- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific`, `date_pacific` (YYYY-MM-DD)
+- Date fields: `year_month_pacific` (YYYY-MM), `year_pacific`, `month_pacific` (01-12 as string), `date_pacific` (YYYY-MM-DD)
 - Hourly counts: `hourly_event_count`, `hourly_event_positive_count`
 - Detection counts: `detection_count`, `detection_positive_count`
+- `srkw_positive`: true if any hour in the day is positive
 - `detection_ids`, `comments` (semicolon-delimited)
 
 ## Output Directory Structure
