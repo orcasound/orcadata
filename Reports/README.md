@@ -293,6 +293,66 @@ python preprocess_detections.py --dry-run
 - `orcahello_unmoderated`: ≥3 detections per hour (unmoderated, same threshold as orcasound)
 - `orcasound`: ≥3 positive detections per hour (unmoderated, requires more signals)
 
+### Google Sheets Integration
+
+Upload concatenated CSV data directly to a Google Spreadsheet:
+
+```bash
+# Update Google Sheet with concatenated data (interactive confirmation)
+python preprocess_detections.py --aggregate --concat --gsheet-update gsheet_config.yaml
+
+# Skip interactive confirmation (for automation)
+python preprocess_detections.py --aggregate --concat --gsheet-update gsheet_config.yaml --gsheet-noconfirm
+```
+
+**Setup:**
+
+1. **Create service account credentials**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to **APIs & Services** → **Credentials**
+   - Enable **Google Sheets API** and **Google Drive API**
+   - Click **Create Credentials** → **Service Account**
+   - Name it (e.g., "orca-reports-service") and click **Create and Continue**
+   - Skip role assignment (click **Continue**, then **Done**)
+   - Click on the service account email → **Keys** tab → **Add Key** → **Create new key**
+   - Choose **JSON** format and download the key file
+   - Save the key file to `.config/gspread/service_account.json` (or any location you prefer)
+
+2. **Share your spreadsheet with the service account**:
+   - Open your Google Spreadsheet
+   - Click **Share** button
+   - Add the service account email (found in the JSON key file as `client_email`)
+   - Set permission to **Editor**
+   - Uncheck "Notify people" and click **Share**
+
+3. **Create config file** from example:
+   ```bash
+   cp gsheet_config.example.yaml gsheet_config.yaml
+   ```
+
+4. **Edit config** with your spreadsheet ID, sheet GIDs, and credentials path:
+   ```yaml
+   spreadsheet_id: "YOUR_SPREADSHEET_ID"  # From spreadsheet URL
+   credentials_file: "./.config/gspread/service_account.json"  # Path to service account JSON
+   sheets:
+     detections:
+       gid: 378248070           # From sheet URL (?gid=NUMBER)
+       csv_source: "detections"
+     hourly_events:
+       gid: 1680353668
+       csv_source: "hourly_events"
+     daily_events:
+       gid: 2454055
+       csv_source: "daily_events"
+   ```
+
+**Notes:**
+- **Security**: Service account only has access to spreadsheets you explicitly share with it
+- **Selective updates**: Only the specified sheets are updated (other sheets like pivot tables remain untouched)
+- **Interactive confirmation**: Shows worksheet title and old → new row counts before overwriting
+- **Automation**: Use `--gsheet-noconfirm` flag to bypass confirmation for automated runs
+- **Worksheet titles**: The actual worksheet titles from your spreadsheet will be displayed (e.g., "CombinedLogbook-detections")
+
 See [Data Models](./data_models.md) for details on output schemas.
 
 ## Files
@@ -303,5 +363,7 @@ See [Data Models](./data_models.md) for details on output schemas.
 - `orcasound_graphql.py` - GraphQL query builder
 - `detection_types.py` - Pydantic data models (see [Data Models](./data_models.md))
 - `preprocess_detections.py` - Preprocessing and aggregation
+- `gsheet_utils.py` - Google Sheets integration utilities
+- `gsheet_config.example.yaml` - Example Google Sheets configuration
 - `pyproject.toml` - Project dependencies
 - `.python-version` - Python version (3.10)

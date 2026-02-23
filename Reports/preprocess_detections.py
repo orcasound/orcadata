@@ -800,6 +800,97 @@ def concatenate_daily_csvs(months: List[str]) -> int:
     return total_rows
 
 
+# --- Google Sheets Update ---
+
+
+def update_google_sheets(
+    config_path: Path,
+    no_confirm: bool = False,
+) -> None:
+    """
+    Update Google Sheets with concatenated CSV data.
+
+    Args:
+        config_path: Path to YAML config file
+        no_confirm: Skip interactive confirmation if True
+    """
+    from gsheet_utils import (
+        load_gsheet_config,
+        get_gspread_client,
+        get_csv_path,
+        read_csv_as_values,
+        get_sheet_info,
+        update_sheet,
+    )
+
+    # Load config
+    if not config_path.exists():
+        logger.error(f"Config file not found: {config_path}")
+        return
+
+    config = load_gsheet_config(config_path)
+    spreadsheet_id = config["spreadsheet_id"]
+    sheets_config = config["sheets"]
+
+    # Initialize client (may trigger OAuth browser flow)
+    try:
+        client = get_gspread_client(config)
+    except Exception as e:
+        logger.error(f"Failed to authenticate with Google Sheets: {e}")
+        return
+
+    logger.info(
+        f"Updating Google Sheet: https://docs.google.com/spreadsheets/d/{spreadsheet_id}"
+    )
+
+    for sheet_name, sheet_config in sheets_config.items():
+        gid = sheet_config["gid"]
+        csv_source = sheet_config["csv_source"]
+
+        try:
+            csv_path = get_csv_path(csv_source)
+        except ValueError as e:
+            logger.error(f"Skipping {sheet_name}: {e}")
+            continue
+
+        if not csv_path.exists():
+            logger.warning(f"Skipping {sheet_name}: {csv_path} not found")
+            continue
+
+        # Read CSV data
+        try:
+            data = read_csv_as_values(csv_path)
+            new_row_count = len(data)
+        except Exception as e:
+            logger.error(f"Failed to read {csv_path}: {e}")
+            continue
+
+        # Get current sheet info
+        try:
+            worksheet, old_row_count = get_sheet_info(client, spreadsheet_id, gid)
+            worksheet_title = worksheet.title
+        except Exception as e:
+            logger.error(f"Failed to access {sheet_name} (gid={gid}): {e}")
+            continue
+
+        # Interactive confirmation unless no_confirm
+        if not no_confirm:
+            prompt = f"Overwrite '{worksheet_title}' ({old_row_count} rows → {new_row_count} rows)? [y/N]: "
+            confirm = input(prompt).strip().lower()
+            if confirm != "y":
+                logger.info(f"  Skipped {worksheet_title}")
+                continue
+
+        # Update sheet
+        try:
+            rows_written = update_sheet(worksheet, data)
+            logger.info(f"  Updated {worksheet_title}: {old_row_count} → {rows_written} rows")
+        except Exception as e:
+            logger.error(f"  Failed to update {sheet_name}: {e}")
+
+    logger.info("Google Sheet update complete.")
+
+
 # --- CLI ---
 
 
@@ -849,6 +940,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging."
+    )
+    parser.add_argument(
+        "--gsheet-update",
+        type=str,
+        metavar="CONFIG_YAML",
+        help="Update Google Sheet with concatenated CSV data using the specified YAML config file.",
+    )
+    parser.add_argument(
+        "--gsheet-noconfirm",
+        action="store_true",
+        help="Skip interactive confirmation when updating Google Sheets.",
     )
     return parser.parse_args()
 
@@ -967,6 +1069,10 @@ def main() -> None:
             concatenate_daily_csvs(processed_months)
 
         logger.info(f"Aggregation complete for {len(processed_months)} months.")
+
+    # Update Google Sheet if requested
+    if args.gsheet_update:
+        update_google_sheets(Path(args.gsheet_update), args.gsheet_noconfirm)
 
 
 if __name__ == "__main__":

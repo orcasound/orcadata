@@ -12,3 +12,6 @@ combined_logbook/
 # Claude files
 claude-instructions/
 .claude/
+
+# Google Sheets config (may contain credentials path)
+gsheet_config.example.yaml

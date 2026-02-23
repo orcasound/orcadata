@@ -11,6 +11,10 @@ dependencies = [
     "pytz>=2023.3",
     "tqdm>=4.66.0",
     "soundfile>=0.12.0",
+    "gspread>=6.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "pyyaml>=6.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

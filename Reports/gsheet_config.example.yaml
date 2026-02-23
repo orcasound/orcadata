@@ -1,0 +1,23 @@
+# Google Sheets Configuration
+# Copy this file to gsheet_config.yaml and update with your values
+
+# The spreadsheet ID from the URL:
+# https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
+spreadsheet_id: "YOUR_SPREADSHEET_ID"
+
+# Path to service account credentials JSON
+credentials_file: "./.config/gspread/service_account.json"
+
+# Sheet configuration
+# gid: Found in URL as ?gid=NUMBER
+# csv_source: One of "detections", "hourly_events", "daily_events"
+sheets:
+  detections:
+    gid: 0
+    csv_source: "detections"
+  hourly_events:
+    gid: 1
+    csv_source: "hourly_events"
+  daily_events:
+    gid: 2
+    csv_source: "daily_events"
