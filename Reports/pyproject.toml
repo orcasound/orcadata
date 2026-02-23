@@ -15,6 +15,8 @@ dependencies = [
     "google-auth>=2.0.0",
     "google-auth-oauthlib>=1.0.0",
     "pyyaml>=6.0.0",
+    "matplotlib>=3.7.0",
+    "wordcloud>=1.9.0",
 ]
 
 [tool.hatch.build.targets.wheel]
