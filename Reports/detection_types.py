@@ -150,7 +150,8 @@ class CombinedDetection(BaseModel):
     month_pacific: int  # Month (1-12) in Pacific time
     date_pacific: str  # YYYY-MM-DD in Pacific time
     location_slug: str  # Standardized location slug
-    srkw_positive: bool  # True if whale detection confirmed
+    srkw_positive: bool  # if SRKW orca detection confirmed
+    other_cetacean_positive: bool  # heuristic tagging of comments with high-precision keywords
     comments: Optional[str] = None  # Human comments
 
     # OrcaHello-specific metadata
@@ -177,8 +178,10 @@ class HourlyLogbookEvent(BaseModel):
     date_pacific: str  # YYYY-MM-DD in Pacific time
     hour_pacific: int  # Hour (0-23) in Pacific time
     detection_count: int  # Total detections in this hour
-    detection_positive_count: int  # Count of srkw_positive=true detections
-    srkw_positive: bool  # Whether hour is considered positive based on source-specific threshold
+    detection_srkw_count: int  # Count of srkw_positive=true detections
+    detection_other_cetacean_count: int  # Count of other_cetacean_positive=true detections
+    srkw_positive: bool  # hour is considered positive if detections exceed source-specific threshold
+    other_cetacean_positive: bool  # hour is considered positive if detections exceed source-specific threshold
     detection_ids: str  # Semicolon-delimited list of detection IDs
     comments: str  # Semicolon-delimited concatenated comments
 
@@ -191,9 +194,12 @@ class DailyLogbookEvent(BaseModel):
     year_pacific: int  # Year in Pacific time
     month_pacific: str  # Month (01-12) in Pacific time
     date_pacific: str  # YYYY-MM-DD in Pacific time
-    hourly_event_count: int  # Number of distinct hours with activity
-    hourly_event_positive_count: int  # Count of hourly events where srkw_positive=True
+    hourly_event_count: int  # Number of distinct hours with activity (any detections)
+    hourly_event_srkw_count: int  # Count of hourly events where srkw_positive=True
     detection_count: int  # Total detections for the day
-    detection_positive_count: int  # Count of srkw_positive=true detections
+    detection_srkw_count: int  # Count of srkw_positive=true detections
+    detection_other_cetacean_count: int  # Count of other_cetacean_positive=true detections
+    srkw_positive: bool  # Whether day is considered positive (any hour is positive)
+    other_cetacean_positive: bool  # Whether day is considered positive (any hour is positive)
     detection_ids: str  # Semicolon-delimited list of all detection IDs
     comments: str  # Semicolon-delimited concatenated comments

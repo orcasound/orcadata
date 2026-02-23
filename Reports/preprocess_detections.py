@@ -52,6 +52,31 @@ ORCAHELLO_MODERATED_HOURLY_THRESHOLD = 1  # OrcaHello moderated detections: >= 1
 ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD = 3  # OrcaHello unmoderated: >= 3 detections (same as orcasound)
 ORCASOUND_HOURLY_DETECTION_THRESHOLD = 3  # Orcasound detections are not moderated, so >= 3 positives needed
 
+# High-precision substrings for other_cetacean classification (non-SRKW whales)
+# Catches Bigg's/transients, humpback, offshore orcas, minke, grey whales, etc.
+OTHER_CETACEAN_SUBSTRINGS = (
+    "bigg",  # Biggs, Bigg's
+    "transient",  # transients, transient
+    "humpback",
+    "offshores",
+    "minke",
+    "grey whale",
+    "gray whale",
+)
+
+
+def is_other_cetacean(comment: str | None) -> bool:
+    """
+    High-precision heuristic: returns True if comment indicates other cetacean (non-SRKW).
+
+    Matches Bigg's/transient orcas, humpback, offshore orcas, minke, grey/gray whales.
+    """
+    if not comment:
+        return False
+    lower = comment.strip().lower()
+    return any(sub in lower for sub in OTHER_CETACEAN_SUBSTRINGS)
+
+
 # Manual alias mappings for names that don't auto-match
 # Maps OrcaHello location names to canonical Orcasound slugs
 ORCAHELLO_NAME_ALIASES: Dict[str, str] = {
@@ -265,6 +290,10 @@ def convert_orcahello_detection(
     month_pacific = pst_dt.strftime("%m")  # Zero-padded month string (01-12)
     year_month_pacific = pst_dt.strftime("%Y-%m")
 
+    # Check for other cetacean (non-SRKW) keywords in comments
+    comments = det.get("comments")
+    other_cetacean_positive = is_other_cetacean(comments)
+
     return CombinedDetection(
         source=source,
         detection_id=det["id"],
@@ -277,7 +306,8 @@ def convert_orcahello_detection(
         date_pacific=date_pacific,
         location_slug=location_slug,
         srkw_positive=srkw_positive,
-        comments=det.get("comments"),
+        other_cetacean_positive=other_cetacean_positive,
+        comments=comments,
         meta_orcahello_moderator=det.get("moderator"),
         meta_orcahello_tags=det.get("tags") if det.get("tags") else None,
         meta_orcahello_confidence=det.get("confidence"),
@@ -304,9 +334,16 @@ def convert_orcasound_detection(
     else:
         location_slug = f"unmapped_{normalize_to_slug(feed.get('name', 'unknown'))}"
 
+    # Check for other cetacean (non-SRKW) keywords in description
+    description = det.get("description")
+    other_cetacean_positive = is_other_cetacean(description)
+
     # Determine srkw_positive (category == "WHALE")
+    # For orcasound: other_cetacean is EXCLUSIVE vs srkw_positive
+    # If other_cetacean_positive is True, srkw_positive should be False
     category = det.get("category")
-    srkw_positive = category == "WHALE" if category else False
+    is_whale_category = category == "WHALE" if category else False
+    srkw_positive = is_whale_category and not other_cetacean_positive
 
     # Extract date fields from Pacific timestamp
     date_pacific = pst_dt.strftime("%Y-%m-%d")
@@ -326,7 +363,8 @@ def convert_orcasound_detection(
         date_pacific=date_pacific,
         location_slug=location_slug,
         srkw_positive=srkw_positive,
-        comments=det.get("description"),
+        other_cetacean_positive=other_cetacean_positive,
+        comments=description,
         meta_orcasound_listener_count=det.get("listenerCount"),
         meta_orcasound_category=category,
         meta_orcasound_hls_timestamp=det.get("playlistTimestamp"),
@@ -434,6 +472,7 @@ def write_detections_csv(path: Path, detections: List[CombinedDetection]) -> Non
             row = det.model_dump()
             # Convert bool to lowercase string for CSV
             row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
+            row["other_cetacean_positive"] = "true" if row["other_cetacean_positive"] else "false"
             # Convert None to empty string
             row = {k: ("" if v is None else v) for k, v in row.items()}
             writer.writerow(row)
@@ -558,21 +597,35 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
     # Create hourly events from groups
     for (source, location_slug, date_pacific, hour_pacific), items in grouped.items():
         detection_count = len(items)
-        detection_positive_count = sum(
+        detection_srkw_count = sum(
             1 for item in items
             if item["row"].get("srkw_positive", "").strip().lower() == "true"
+        )
+        detection_other_cetacean_count = sum(
+            1 for item in items
+            if item["row"].get("other_cetacean_positive", "").strip().lower() == "true"
         )
 
         # Determine srkw_positive based on source-specific threshold
         if source == "orcahello_moderated":
-            srkw_positive = detection_positive_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
+            srkw_positive = detection_srkw_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
         elif source == "orcahello_unmoderated":
-            # For unmoderated, all detections are positive, so positive_count == total_count
-            srkw_positive = detection_positive_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
+            # For unmoderated, all detections are positive, so srkw_count == total_count
+            srkw_positive = detection_srkw_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
         elif source == "orcasound":
-            srkw_positive = detection_positive_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
+            srkw_positive = detection_srkw_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
         else:
             srkw_positive = False
+
+        # Determine other_cetacean_positive using same threshold logic as srkw
+        if source == "orcahello_moderated":
+            other_cetacean_positive = detection_other_cetacean_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
+        elif source == "orcahello_unmoderated":
+            other_cetacean_positive = detection_other_cetacean_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
+        elif source == "orcasound":
+            other_cetacean_positive = detection_other_cetacean_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
+        else:
+            other_cetacean_positive = False
 
         # Concatenate detection IDs
         detection_ids = ";".join(item["row"]["detection_id"] for item in items)
@@ -601,8 +654,10 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
             date_pacific=date_pacific,
             hour_pacific=hour_pacific,
             detection_count=detection_count,
-            detection_positive_count=detection_positive_count,
+            detection_srkw_count=detection_srkw_count,
+            detection_other_cetacean_count=detection_other_cetacean_count,
             srkw_positive=srkw_positive,
+            other_cetacean_positive=other_cetacean_positive,
             detection_ids=detection_ids,
             comments=comments,
         )
@@ -643,15 +698,22 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
     # Create daily events from groups
     for (source, location_slug, date_pacific), items in grouped.items():
         hourly_event_count = len(items)
-        hourly_event_positive_count = sum(
+        hourly_event_srkw_count = sum(
             1 for item in items
             if item.get("srkw_positive", "").strip().lower() == "true"
+        )
+        hourly_event_other_cetacean_count = sum(
+            1 for item in items
+            if item.get("other_cetacean_positive", "").strip().lower() == "true"
         )
 
         # Sum detection counts
         detection_count = sum(int(item.get("detection_count", 0)) for item in items)
-        detection_positive_count = sum(
-            int(item.get("detection_positive_count", 0)) for item in items
+        detection_srkw_count = sum(
+            int(item.get("detection_srkw_count", 0)) for item in items
+        )
+        detection_other_cetacean_count = sum(
+            int(item.get("detection_other_cetacean_count", 0)) for item in items
         )
 
         # Concatenate all detection IDs
@@ -676,7 +738,8 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
         year_month_pacific = date_pacific[:7]  # YYYY-MM
 
         # Day is positive if any hour is positive
-        srkw_positive = hourly_event_positive_count > 0
+        srkw_positive = hourly_event_srkw_count > 0
+        other_cetacean_positive = hourly_event_other_cetacean_count > 0
 
         event = DailyLogbookEvent(
             source=source,
@@ -686,10 +749,12 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
             month_pacific=month_pacific,
             date_pacific=date_pacific,
             hourly_event_count=hourly_event_count,
-            hourly_event_positive_count=hourly_event_positive_count,
+            hourly_event_srkw_count=hourly_event_srkw_count,
             detection_count=detection_count,
-            detection_positive_count=detection_positive_count,
+            detection_srkw_count=detection_srkw_count,
+            detection_other_cetacean_count=detection_other_cetacean_count,
             srkw_positive=srkw_positive,
+            other_cetacean_positive=other_cetacean_positive,
             detection_ids=detection_ids,
             comments=comments,
         )
@@ -714,6 +779,7 @@ def write_hourly_csv(path: Path, events: List[HourlyLogbookEvent]) -> None:
             row = event.model_dump()
             # Convert bool to lowercase string for CSV
             row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
+            row["other_cetacean_positive"] = "true" if row["other_cetacean_positive"] else "false"
             # Convert None to empty string
             row = {k: ("" if v is None else v) for k, v in row.items()}
             writer.writerow(row)
@@ -731,6 +797,9 @@ def write_daily_csv(path: Path, events: List[DailyLogbookEvent]) -> None:
         writer.writeheader()
         for event in events:
             row = event.model_dump()
+            # Convert bool to lowercase string for CSV
+            row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
+            row["other_cetacean_positive"] = "true" if row["other_cetacean_positive"] else "false"
             # Convert None to empty string
             row = {k: ("" if v is None else v) for k, v in row.items()}
             writer.writerow(row)
