@@ -1,4 +1,4 @@
-# Orca Detection Data Fetcher
+# Orca Detection Reports
 
 Scripts to fetch raw detection data from OrcaHello and Orcasound APIs with month-year bucket caching for incremental updates.
 
@@ -26,7 +26,7 @@ source .venv/bin/activate  # Mac/Linux
 uv pip install -e .
 ```
 
-## Usage
+## Orca Detection Data Fetcher
 
 ### Fetch OrcaHello API Data
 
@@ -101,7 +101,7 @@ python fetch_orcasound.py --dry-run
 - `--dry-run` - Show what would be fetched without fetching
 - `--verbose` - Detailed logging
 
-## Cache Structure
+### Cache Structure
 
 Both scripts use the same caching strategy with month-year buckets:
 
@@ -148,9 +148,9 @@ The `cache_index.json` file tracks which months have been fetched:
 - **complete: false** - Current month that may receive new detections (always refetched)
 - Incremental updates only fetch new or incomplete months
 
-## Cache Management
+### Cache Management
 
-### Inspect Cache
+#### Inspect Cache
 
 ```bash
 # View cache index
@@ -161,7 +161,7 @@ ls -lh cache/orcahello/2024-01/
 cat cache/orcahello/2024-01/metadata.jsonl
 ```
 
-### Clear Cache
+#### Clear Cache
 
 ```bash
 # Clear specific month
@@ -174,7 +174,7 @@ rm -rf cache/orcahello/
 rm -rf cache/
 ```
 
-### Force Refresh
+#### Force Refresh
 
 ```bash
 # Refresh specific month
@@ -184,7 +184,7 @@ python fetch_orcahello.py --from-date 2024-01-01 --to-date 2024-01-31 --force-re
 python fetch_orcahello.py
 ```
 
-## How Incremental Updates Work
+### How Incremental Updates Work
 
 1. **First Run** (`--full`):
    - Fetches all historical data
@@ -204,71 +204,107 @@ python fetch_orcahello.py
    - Updates cache with new data
    - Useful if API data was corrected/updated
 
-## Error Recovery
+### Error Recovery
 
-### Network Failures
+Network Failures:
 - Successfully fetched months are saved before crash
 - Re-running the script skips cached months and continues
 - Uses exponential backoff retry (5 retries per request)
 
-### Invalid Data
+Invalid Data:
 - Validation errors are logged but don't stop the script
 - Invalid records are skipped
 - Check `metadata.jsonl` for validation errors
 
-### Partial Fetches
+Partial Fetches:
 - Current month: always refetched (expected behavior)
 - Past months with `complete: false`: automatically refetched
 
-## Performance Notes
+### Performance Notes
 
-### OrcaHello API
+OrcaHello API:
 - **Total records**: ~15,700 historical detections
 - **Full fetch time**: 5-10 minutes (depends on network)
 - **Incremental update**: 1-2 minutes (current month only)
 - **Cache size**: 50-100MB for all historical data
 
-### Orcasound API
+Orcasound API:
 - **Total records**: ~10,000-15,000 human detections
 - **Full fetch time**: 30-60 seconds (GraphQL is faster)
 - **Incremental update**: 10-20 seconds
 - **Cache size**: Similar to OrcaHello
 
-## API Documentation
+### API Documentation
 
-### OrcaHello API
+OrcaHello API:
 - **Base URL**: https://aifororcasdetections.azurewebsites.net/api/detections
 - **Swagger UI**: https://aifororcasdetections.azurewebsites.net/swagger/index.html
 - **Type**: REST API with pagination
 - **Data**: AI-moderated orca call detections with spectrograms
 
-### Orcasound API
+Orcasound API:
 - **GraphQL Endpoint**: https://live.orcasound.net/graphql
 - **GraphiQL UI**: https://live.orcasound.net/graphiql
 - **Redoc UI**: https://live.orcasound.net/api/json/redoc
 - **Type**: GraphQL API with offset pagination
 - **Data**: Human-reported (and machine-reported) orca/vessel/other detections
 
-## Troubleshooting
+### Troubleshooting
 
-### `uv: command not found`
+`uv: command not found`:
 Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
-### `No module named 'requests'`
+`No module named 'requests'`:
 Make sure virtual environment is activated and dependencies installed:
 ```bash
 source .venv/bin/activate
 uv pip install -e .
 ```
 
-### `Permission denied` errors
+`Permission denied` errors:
 Ensure you have write permissions in the cache directory
 
-### Rate limiting / 429 errors
+Rate limiting / 429 errors:
 Increase the delay between requests: `--delay 1.0`
 
-### GraphQL errors
+GraphQL errors:
 Check the Orcasound API status at https://live.orcasound.net/graphiql
+
+
+## Orca Detection Logbook 
+
+Preprocess fetched raw detections from cache into a unified format and aggregate into hourly and daily events per month.
+
+```bash
+# Process all months from cache
+python preprocess_detections.py
+
+# Process with aggregation into hourly/daily events per month and concatenate into combined CSVs
+python preprocess_detections.py --aggregate --concat
+
+# Only run aggregation on existing detection CSVs
+python preprocess_detections.py --aggregate-only
+
+# Force reprocess specific date range
+python preprocess_detections.py --force --from-date 2024-01-01 --to-date 2024-12-31
+
+# Dry run
+python preprocess_detections.py --dry-run
+```
+
+**What it does:**
+1. Builds a unified hydrophone locations mapping (saved to `fetch_cache/hydrophone_locations.json`)
+2. Converts raw detections from both sources into a standardized `CombinedDetection` format
+3. Filters OrcaHello to `reviewed=true` and Orcasound to `source=HUMAN`
+4. Outputs per-month CSV files to `combined_logbook/detections/`
+5. With `--aggregate`: creates hourly and daily event CSVs in `combined_logbook/hourly_events/` and `combined_logbook/daily_events/`
+6. With `--concat`: creates combined `all_detections.csv`, `all_hourly_events.csv`, `all_daily_events.csv`
+
+**Aggregation thresholds for `srkw_positive`:**
+- OrcaHello: ≥1 positive detection per hour (moderated, higher confidence)
+- Orcasound: ≥3 positive detections per hour (unmoderated, requires more signals)
+
+See [Data Models](./data_models.md) for details on output schemas.
 
 ## Files
 
@@ -276,6 +312,7 @@ Check the Orcasound API status at https://live.orcasound.net/graphiql
 - `fetch_orcasound.py` - Orcasound GraphQL API fetcher
 - `fetch_utils.py` - Shared utilities (HTTP, caching, timezone)
 - `orcasound_graphql.py` - GraphQL query builder
-- `detection_types.py` - Pydantic data models
+- `detection_types.py` - Pydantic data models (see [Data Models](./data_models.md))
+- `preprocess_detections.py` - Preprocessing and aggregation
 - `pyproject.toml` - Project dependencies
 - `.python-version` - Python version (3.10)
