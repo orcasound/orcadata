@@ -1,0 +1,27 @@
+[project]
+name = "orcas-analysis"
+version = "0.1.0"
+description = "Fetch and analyze orca detection data from multiple APIs"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "requests>=2.31.0",
+    "pydantic>=2.0.0",
+    "urllib3>=2.0.0",
+    "pandas>=2.0.0",
+    "pytz>=2023.3",
+    "tqdm>=4.66.0",
+    "soundfile>=0.12.0",
+    "gspread>=6.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "pyyaml>=6.0.0",
+    "matplotlib>=3.7.0",
+    "wordcloud>=1.9.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

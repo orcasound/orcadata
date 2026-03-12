@@ -1,0 +1,17 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Cache directories
+fetch_cache/
+test_cache/
+tmp/
+combined_logbook/
+
+# Claude files
+claude-instructions/
+.claude/
+
+# Google Sheets config (may contain credentials path)
+gsheet_config.example.yaml
