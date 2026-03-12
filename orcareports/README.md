@@ -12,8 +12,8 @@ Scripts to fetch raw detection data from OrcaHello and Orcasound APIs with month
 ### Installation
 
 ```bash
-# Navigate to Reports directory
-cd Reports/
+# Navigate to orcareports directory
+cd orcareports/
 
 # Create virtual environment with Python 3.10
 uv venv --python 3.10

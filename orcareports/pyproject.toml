@@ -1,5 +1,5 @@
 [project]
-name = "orcas-analysis"
+name = "orcareports-logbook"
 version = "0.1.0"
 description = "Fetch and analyze orca detection data from multiple APIs"
 requires-python = ">=3.10,<3.11"
