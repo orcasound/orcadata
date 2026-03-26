@@ -19,7 +19,7 @@ import logging
 import re
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union, get_args, get_origin
 
 import pytz
 from detection_types import (
@@ -876,6 +876,31 @@ def concatenate_daily_csvs(months: List[str]) -> int:
 # --- Google Sheets Update ---
 
 
+def _get_numeric_columns(model_class) -> Tuple[set[str], set[str]]:
+    """Extract int and float column names from a Pydantic model's type annotations."""
+    int_cols: set[str] = set()
+    float_cols: set[str] = set()
+    for name, field in model_class.model_fields.items():
+        ann = field.annotation
+        origin = get_origin(ann)
+        if origin is Union:
+            args = [a for a in get_args(ann) if a is not type(None)]
+            if args:
+                ann = args[0]
+        if ann is int:
+            int_cols.add(name)
+        elif ann is float:
+            float_cols.add(name)
+    return int_cols, float_cols
+
+
+CSV_SOURCE_MODELS = {
+    "detections": CombinedDetection,
+    "hourly_events": HourlyLogbookEvent,
+    "daily_events": DailyLogbookEvent,
+}
+
+
 def update_google_sheets(
     config_path: Path,
     no_confirm: bool = False,
@@ -930,9 +955,16 @@ def update_google_sheets(
             logger.warning(f"Skipping {sheet_name}: {csv_path} not found")
             continue
 
-        # Read CSV data
+        # Resolve numeric columns from the Pydantic model for this csv_source
+        model_class = CSV_SOURCE_MODELS.get(csv_source)
+        if model_class:
+            int_columns, float_columns = _get_numeric_columns(model_class)
+        else:
+            int_columns, float_columns = None, None
+
+        # Read CSV data (with numeric coercion for known columns)
         try:
-            data = read_csv_as_values(csv_path)
+            data = read_csv_as_values(csv_path, int_columns=int_columns, float_columns=float_columns)
             new_row_count = len(data)
         except Exception as e:
             logger.error(f"Failed to read {csv_path}: {e}")

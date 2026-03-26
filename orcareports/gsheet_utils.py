@@ -73,11 +73,45 @@ def get_csv_path(csv_source: str) -> Path:
     return CSV_SOURCE_DIRS[csv_source] / CSV_SOURCE_FILES[csv_source]
 
 
-def read_csv_as_values(csv_path: Path) -> List[List[str]]:
-    """Read CSV file and return as list of lists (for gspread)."""
+def read_csv_as_values(
+    csv_path: Path,
+    int_columns: set[str] | None = None,
+    float_columns: set[str] | None = None,
+) -> List[List[Any]]:
+    """Read CSV file and return as list of lists (for gspread).
+
+    When int_columns/float_columns are provided, values in those columns are
+    coerced to Python int/float so gspread serialises them as JSON numbers and
+    Google Sheets stores them with the correct numeric type.
+    """
     with open(csv_path, "r", newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
-        return list(reader)
+        rows: List[List[Any]] = list(reader)
+
+    if not rows or (not int_columns and not float_columns):
+        return rows
+
+    header = rows[0]
+    int_indices = {i for i, col in enumerate(header) if int_columns and col in int_columns}
+    float_indices = {i for i, col in enumerate(header) if float_columns and col in float_columns}
+
+    for row in rows[1:]:
+        for col_idx in range(len(row)):
+            val = row[col_idx]
+            if not val:
+                continue
+            if col_idx in int_indices:
+                try:
+                    row[col_idx] = int(val)
+                except ValueError:
+                    pass
+            elif col_idx in float_indices:
+                try:
+                    row[col_idx] = float(val)
+                except ValueError:
+                    pass
+
+    return rows
 
 
 def get_sheet_info(
@@ -95,7 +129,7 @@ def get_sheet_info(
     return worksheet, row_count
 
 
-def update_sheet(worksheet: gspread.Worksheet, data: List[List[str]]) -> int:
+def update_sheet(worksheet: gspread.Worksheet, data: List[List[Any]]) -> int:
     """
     Clear and update a sheet with new data.
 
