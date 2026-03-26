@@ -508,8 +508,7 @@ def main():
         # Filter to only detections that belong to this PST month
         # (API query may include some from adjacent months due to UTC/PST offset)
         month_detections = [
-            d for d in detections
-            if extract_month_year_pst(d.timestamp) == month
+            d for d in detections if extract_month_year_pst(d.timestamp) == month
         ]
         logger.info(
             f"Filtered to {len(month_detections)} detections for {month} "

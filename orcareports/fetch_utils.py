@@ -8,9 +8,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pytz
 import requests
-from urllib3.util.retry import Retry
-
 from detection_types import CacheIndex, DateRange, MonthMetadata
+from urllib3.util.retry import Retry
 
 # HTTP Session Management
 

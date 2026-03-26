@@ -2,7 +2,8 @@
 """Test Google Sheets service account authentication."""
 
 from pathlib import Path
-from gsheet_utils import load_gsheet_config, get_gspread_client
+
+from gsheet_utils import get_gspread_client, load_gsheet_config
 
 print("Testing service account authentication...")
 print()
@@ -35,8 +36,8 @@ try:
     print()
     print("Configured sheets to update:")
     for sheet_name, sheet_config in config["sheets"].items():
-        gid = sheet_config['gid']
-        csv_source = sheet_config['csv_source']
+        gid = sheet_config["gid"]
+        csv_source = sheet_config["csv_source"]
 
         # Find matching worksheet to get actual title
         worksheet_title = None
@@ -46,9 +47,13 @@ try:
                 break
 
         if worksheet_title:
-            print(f"  - Config name: '{sheet_name}' → Worksheet: '{worksheet_title}' (gid={gid}, csv_source={csv_source})")
+            print(
+                f"  - Config name: '{sheet_name}' → Worksheet: '{worksheet_title}' (gid={gid}, csv_source={csv_source})"
+            )
         else:
-            print(f"  - Config name: '{sheet_name}' → NOT FOUND (gid={gid}, csv_source={csv_source})")
+            print(
+                f"  - Config name: '{sheet_name}' → NOT FOUND (gid={gid}, csv_source={csv_source})"
+            )
 
     print()
     print("✓ All tests passed! Service account is properly configured.")
@@ -56,4 +61,5 @@ try:
 except Exception as e:
     print(f"✗ Error: {e}")
     import traceback
+
     traceback.print_exc()

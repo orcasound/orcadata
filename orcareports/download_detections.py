@@ -295,7 +295,9 @@ def process_month(
             futures.append(future)
 
         # Collect results with progress bar
-        for future in tqdm(as_completed(futures), total=len(futures), desc=month, unit="detection"):
+        for future in tqdm(
+            as_completed(futures), total=len(futures), desc=month, unit="detection"
+        ):
             status, success = future.result()
             processed += 1
             if status == "skipped":
@@ -496,7 +498,9 @@ def main() -> int:
             dry_run=args.dry_run,
         )
 
-        logger.info(f"{month}: processed={processed}, downloaded={downloaded}, skipped={skipped}")
+        logger.info(
+            f"{month}: processed={processed}, downloaded={downloaded}, skipped={skipped}"
+        )
         total_processed += processed
         total_downloaded += downloaded
         total_skipped += skipped

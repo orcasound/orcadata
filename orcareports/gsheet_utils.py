@@ -92,8 +92,12 @@ def read_csv_as_values(
         return rows
 
     header = rows[0]
-    int_indices = {i for i, col in enumerate(header) if int_columns and col in int_columns}
-    float_indices = {i for i, col in enumerate(header) if float_columns and col in float_columns}
+    int_indices = {
+        i for i, col in enumerate(header) if int_columns and col in int_columns
+    }
+    float_indices = {
+        i for i, col in enumerate(header) if float_columns and col in float_columns
+    }
 
     for row in rows[1:]:
         for col_idx in range(len(row)):

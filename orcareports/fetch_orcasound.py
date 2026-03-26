@@ -264,7 +264,9 @@ def fetch_all_detections(
         filters.append(f"from={timestamp_gte}")
     if timestamp_lt:
         filters.append(f"to={timestamp_lt}")
-    logger.info(f"Querying API with filters: {', '.join(filters) if filters else 'none'}")
+    logger.info(
+        f"Querying API with filters: {', '.join(filters) if filters else 'none'}"
+    )
 
     while True:
         batch_num += 1
@@ -471,9 +473,7 @@ def main():
         logger.info(f"\n[DRY RUN] Would fetch {len(months_to_fetch)} months:")
         for month in months_to_fetch:
             logger.info(f"  - {month}")
-        source_filter = (
-            "human + machine" if args.include_machine else "human only"
-        )
+        source_filter = "human + machine" if args.include_machine else "human only"
         logger.info(f"\nSource filter: {source_filter}")
         if args.category:
             logger.info(f"Category filter: {args.category}")
@@ -521,9 +521,7 @@ def main():
         end_dt = pacific_tz.localize(
             datetime.combine(month_end + timedelta(days=2), datetime.min.time())
         )
-        timestamp_lt = end_dt.astimezone(pytz.UTC).strftime(
-            "%Y-%m-%dT%H:%M:%S.000000Z"
-        )
+        timestamp_lt = end_dt.astimezone(pytz.UTC).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
 
         try:
             detections = fetch_all_detections(

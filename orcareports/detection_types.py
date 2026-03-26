@@ -70,14 +70,17 @@ class OrcasoundListenerReport(BaseModel):
 
 # Cache models for month-bucket caching
 
+
 class DateRange(BaseModel):
     """Date range for a month bucket in PST timezone"""
+
     min_pst: str
     max_pst: str
 
 
 class MonthMetadata(BaseModel):
     """Metadata for a cached month bucket"""
+
     first_fetch: str
     last_updated: str
     detection_count: int
@@ -87,6 +90,7 @@ class MonthMetadata(BaseModel):
 
 class CacheIndex(BaseModel):
     """Cache index tracking all fetched months"""
+
     months: Dict[str, MonthMetadata]
     last_full_fetch: Optional[str] = None
 
@@ -96,6 +100,7 @@ class CacheIndex(BaseModel):
 
 class OrcasoundFeedGQL(BaseModel):
     """Feed info from Orcasound GraphQL Detection query"""
+
     id: str
     name: str
     slug: str
@@ -104,6 +109,7 @@ class OrcasoundFeedGQL(BaseModel):
 
 class OrcasoundDetectionGQL(BaseModel):
     """Detection from Orcasound GraphQL API (Detection resource type)"""
+
     id: str
     timestamp: str  # ISO datetime e.g. "2026-01-03T03:41:04.000000Z"
     source: str  # "HUMAN" or "MACHINE"
@@ -122,6 +128,7 @@ class OrcasoundDetectionGQL(BaseModel):
 
 class HydrophoneLocation(BaseModel):
     """Unified hydrophone location metadata from all sources"""
+
     slug: str  # Canonical identifier (e.g., "sunset-bay")
     display_name: str  # Human-readable name
     latitude: Optional[float] = None
@@ -134,12 +141,14 @@ class HydrophoneLocation(BaseModel):
 
 class HydrophoneLocationsFile(BaseModel):
     """Complete hydrophone locations reference file"""
+
     locations: List[HydrophoneLocation]
     name_to_slug: Dict[str, str]  # Any name variant -> canonical slug
 
 
 class CombinedDetection(BaseModel):
     """Unified detection record from OrcaHello or Orcasound, for CSV export"""
+
     source: str  # orcahello_moderated | orcahello_unmoderated | orcasound
     detection_id: str  # Original ID from source API
     timestamp_utc: str  # ISO 8601 UTC timestamp
@@ -151,7 +160,9 @@ class CombinedDetection(BaseModel):
     date_pacific: str  # YYYY-MM-DD in Pacific time
     location_slug: str  # Standardized location slug
     srkw_positive: bool  # if SRKW orca detection confirmed
-    other_cetacean_positive: bool  # heuristic tagging of comments with high-precision keywords
+    other_cetacean_positive: (
+        bool  # heuristic tagging of comments with high-precision keywords
+    )
     comments: Optional[str] = None  # Human comments
 
     # OrcaHello-specific metadata
@@ -168,9 +179,12 @@ class CombinedDetection(BaseModel):
 
 class HourlyLogbookEvent(BaseModel):
     """Hourly aggregated event from detections"""
+
     source: str  # orcahello_moderated | orcahello_unmoderated | orcasound
     location_slug: str  # Standardized location slug
-    timestamp_pacific: str  # Rounded hour timestamp (YYYY-MM-DDTHH:00:00-08:00 or -07:00)
+    timestamp_pacific: (
+        str  # Rounded hour timestamp (YYYY-MM-DDTHH:00:00-08:00 or -07:00)
+    )
     timestamp_unix: int  # Unix epoch of the rounded hour
     year_month_pacific: str  # YYYY-MM in Pacific time
     year_pacific: int  # Year in Pacific time
@@ -179,7 +193,9 @@ class HourlyLogbookEvent(BaseModel):
     hour_pacific: int  # Hour (0-23) in Pacific time
     detection_count: int  # Total detections in this hour
     detection_srkw_count: int  # Count of srkw_positive=true detections
-    detection_other_cetacean_count: int  # Count of other_cetacean_positive=true detections
+    detection_other_cetacean_count: (
+        int  # Count of other_cetacean_positive=true detections
+    )
     srkw_positive: bool  # hour is considered positive if detections exceed source-specific threshold
     other_cetacean_positive: bool  # hour is considered positive if detections exceed source-specific threshold
     detection_ids: str  # Semicolon-delimited list of detection IDs
@@ -188,6 +204,7 @@ class HourlyLogbookEvent(BaseModel):
 
 class DailyLogbookEvent(BaseModel):
     """Daily aggregated event from hourly events"""
+
     source: str  # orcahello_moderated | orcahello_unmoderated | orcasound
     location_slug: str  # Standardized location slug
     year_month_pacific: str  # YYYY-MM in Pacific time
@@ -198,8 +215,12 @@ class DailyLogbookEvent(BaseModel):
     hourly_event_srkw_count: int  # Count of hourly events where srkw_positive=True
     detection_count: int  # Total detections for the day
     detection_srkw_count: int  # Count of srkw_positive=true detections
-    detection_other_cetacean_count: int  # Count of other_cetacean_positive=true detections
+    detection_other_cetacean_count: (
+        int  # Count of other_cetacean_positive=true detections
+    )
     srkw_positive: bool  # Whether day is considered positive (any hour is positive)
-    other_cetacean_positive: bool  # Whether day is considered positive (any hour is positive)
+    other_cetacean_positive: (
+        bool  # Whether day is considered positive (any hour is positive)
+    )
     detection_ids: str  # Semicolon-delimited list of all detection IDs
     comments: str  # Semicolon-delimited concatenated comments

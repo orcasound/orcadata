@@ -48,9 +48,15 @@ DAILY_DIR = Path("./combined_logbook/daily_events")
 LOCATIONS_FILE = CACHE_DIR / "hydrophone_locations.json"
 
 # Source-specific thresholds for determining hourly srkw_positive
-ORCAHELLO_MODERATED_HOURLY_THRESHOLD = 1  # OrcaHello moderated detections: >= 1 positive is significant
-ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD = 3  # OrcaHello unmoderated: >= 3 detections (same as orcasound)
-ORCASOUND_HOURLY_DETECTION_THRESHOLD = 3  # Orcasound detections are not moderated, so >= 3 positives needed
+ORCAHELLO_MODERATED_HOURLY_THRESHOLD = (
+    1  # OrcaHello moderated detections: >= 1 positive is significant
+)
+ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD = (
+    3  # OrcaHello unmoderated: >= 3 detections (same as orcasound)
+)
+ORCASOUND_HOURLY_DETECTION_THRESHOLD = (
+    3  # Orcasound detections are not moderated, so >= 3 positives needed
+)
 
 # High-precision substrings for other_cetacean classification (non-SRKW whales)
 # Catches Bigg's/transients, humpback, offshore orcas, minke, grey whales, etc.
@@ -408,13 +414,17 @@ def process_month(
         for det in data:
             if det.get("reviewed"):
                 # Moderated detection
-                converted = convert_orcahello_detection(det, name_to_slug, moderated=True)
+                converted = convert_orcahello_detection(
+                    det, name_to_slug, moderated=True
+                )
                 if converted:
                     combined.append(converted)
                     oh_moderated_count += 1
             else:
                 # Unmoderated detection
-                converted = convert_orcahello_detection(det, name_to_slug, moderated=False)
+                converted = convert_orcahello_detection(
+                    det, name_to_slug, moderated=False
+                )
                 if converted:
                     combined.append(converted)
                     oh_unmoderated_count += 1
@@ -472,7 +482,9 @@ def write_detections_csv(path: Path, detections: List[CombinedDetection]) -> Non
             row = det.model_dump()
             # Convert bool to lowercase string for CSV
             row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
-            row["other_cetacean_positive"] = "true" if row["other_cetacean_positive"] else "false"
+            row["other_cetacean_positive"] = (
+                "true" if row["other_cetacean_positive"] else "false"
+            )
             # Convert None to empty string
             row = {k: ("" if v is None else v) for k, v in row.items()}
             writer.writerow(row)
@@ -585,11 +597,13 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
                 key = (row["source"], row["location_slug"], date_pacific, hour_pacific)
                 if key not in grouped:
                     grouped[key] = []
-                grouped[key].append({
-                    "row": row,
-                    "timestamp_pacific_rounded": timestamp_pacific_rounded,
-                    "timestamp_unix": timestamp_unix,
-                })
+                grouped[key].append(
+                    {
+                        "row": row,
+                        "timestamp_pacific_rounded": timestamp_pacific_rounded,
+                        "timestamp_unix": timestamp_unix,
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to parse timestamp {timestamp_pacific}: {e}")
                 continue
@@ -598,11 +612,13 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
     for (source, location_slug, date_pacific, hour_pacific), items in grouped.items():
         detection_count = len(items)
         detection_srkw_count = sum(
-            1 for item in items
+            1
+            for item in items
             if item["row"].get("srkw_positive", "").strip().lower() == "true"
         )
         detection_other_cetacean_count = sum(
-            1 for item in items
+            1
+            for item in items
             if item["row"].get("other_cetacean_positive", "").strip().lower() == "true"
         )
 
@@ -611,7 +627,9 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
             srkw_positive = detection_srkw_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
         elif source == "orcahello_unmoderated":
             # For unmoderated, all detections are positive, so srkw_count == total_count
-            srkw_positive = detection_srkw_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
+            srkw_positive = (
+                detection_srkw_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
+            )
         elif source == "orcasound":
             srkw_positive = detection_srkw_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
         else:
@@ -619,11 +637,17 @@ def aggregate_detections_to_hourly(month: str) -> List[HourlyLogbookEvent]:
 
         # Determine other_cetacean_positive using same threshold logic as srkw
         if source == "orcahello_moderated":
-            other_cetacean_positive = detection_other_cetacean_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
+            other_cetacean_positive = (
+                detection_other_cetacean_count >= ORCAHELLO_MODERATED_HOURLY_THRESHOLD
+            )
         elif source == "orcahello_unmoderated":
-            other_cetacean_positive = detection_other_cetacean_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
+            other_cetacean_positive = (
+                detection_other_cetacean_count >= ORCAHELLO_UNMODERATED_HOURLY_THRESHOLD
+            )
         elif source == "orcasound":
-            other_cetacean_positive = detection_other_cetacean_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
+            other_cetacean_positive = (
+                detection_other_cetacean_count >= ORCASOUND_HOURLY_DETECTION_THRESHOLD
+            )
         else:
             other_cetacean_positive = False
 
@@ -699,11 +723,13 @@ def aggregate_hourly_to_daily(month: str) -> List[DailyLogbookEvent]:
     for (source, location_slug, date_pacific), items in grouped.items():
         hourly_event_count = len(items)
         hourly_event_srkw_count = sum(
-            1 for item in items
+            1
+            for item in items
             if item.get("srkw_positive", "").strip().lower() == "true"
         )
         hourly_event_other_cetacean_count = sum(
-            1 for item in items
+            1
+            for item in items
             if item.get("other_cetacean_positive", "").strip().lower() == "true"
         )
 
@@ -779,7 +805,9 @@ def write_hourly_csv(path: Path, events: List[HourlyLogbookEvent]) -> None:
             row = event.model_dump()
             # Convert bool to lowercase string for CSV
             row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
-            row["other_cetacean_positive"] = "true" if row["other_cetacean_positive"] else "false"
+            row["other_cetacean_positive"] = (
+                "true" if row["other_cetacean_positive"] else "false"
+            )
             # Convert None to empty string
             row = {k: ("" if v is None else v) for k, v in row.items()}
             writer.writerow(row)
@@ -799,7 +827,9 @@ def write_daily_csv(path: Path, events: List[DailyLogbookEvent]) -> None:
             row = event.model_dump()
             # Convert bool to lowercase string for CSV
             row["srkw_positive"] = "true" if row["srkw_positive"] else "false"
-            row["other_cetacean_positive"] = "true" if row["other_cetacean_positive"] else "false"
+            row["other_cetacean_positive"] = (
+                "true" if row["other_cetacean_positive"] else "false"
+            )
             # Convert None to empty string
             row = {k: ("" if v is None else v) for k, v in row.items()}
             writer.writerow(row)
@@ -964,7 +994,9 @@ def update_google_sheets(
 
         # Read CSV data (with numeric coercion for known columns)
         try:
-            data = read_csv_as_values(csv_path, int_columns=int_columns, float_columns=float_columns)
+            data = read_csv_as_values(
+                csv_path, int_columns=int_columns, float_columns=float_columns
+            )
             new_row_count = len(data)
         except Exception as e:
             logger.error(f"Failed to read {csv_path}: {e}")
@@ -989,7 +1021,9 @@ def update_google_sheets(
         # Update sheet
         try:
             rows_written = update_sheet(worksheet, data)
-            logger.info(f"  Updated {worksheet_title}: {old_row_count} → {rows_written} rows")
+            logger.info(
+                f"  Updated {worksheet_title}: {old_row_count} → {rows_written} rows"
+            )
         except Exception as e:
             logger.error(f"  Failed to update {sheet_name}: {e}")
 
@@ -1077,10 +1111,14 @@ def main() -> None:
         available_months = set()
         if OUTPUT_DIR.exists():
             for csv_file in OUTPUT_DIR.glob("*.csv"):
-                if csv_file.name != "all_detections.csv" and re.match(r"\d{4}-\d{2}\.csv", csv_file.name):
+                if csv_file.name != "all_detections.csv" and re.match(
+                    r"\d{4}-\d{2}\.csv", csv_file.name
+                ):
                     available_months.add(csv_file.stem)
         if not available_months:
-            logger.warning("No detection CSV files found. Run detection processing first.")
+            logger.warning(
+                "No detection CSV files found. Run detection processing first."
+            )
             return
     else:
         # Get months from cache
@@ -1133,7 +1171,9 @@ def main() -> None:
 
         # Write metadata
         if not args.dry_run:
-            write_metadata(total_oh_mod, total_oh_unmod, total_os, total_combined, month_stats)
+            write_metadata(
+                total_oh_mod, total_oh_unmod, total_os, total_combined, month_stats
+            )
 
             # Concatenate if requested
             if args.concat:
@@ -1145,8 +1185,10 @@ def main() -> None:
 
     # Run aggregation if requested
     if args.aggregate or args.aggregate_only:
-        logger.info(f"Aggregating {len(months_to_process)} months to hourly and daily events...")
-        
+        logger.info(
+            f"Aggregating {len(months_to_process)} months to hourly and daily events..."
+        )
+
         processed_months = []
         for month in months_to_process:
             # Aggregate to hourly
@@ -1155,7 +1197,9 @@ def main() -> None:
                 ensure_directory(HOURLY_DIR)
                 hourly_file = HOURLY_DIR / f"{month}.csv"
                 write_hourly_csv(hourly_file, hourly_events)
-                logger.info(f"  {month}: {len(hourly_events)} hourly events → {hourly_file}")
+                logger.info(
+                    f"  {month}: {len(hourly_events)} hourly events → {hourly_file}"
+                )
 
             # Aggregate to daily
             daily_events = aggregate_hourly_to_daily(month)
@@ -1163,7 +1207,9 @@ def main() -> None:
                 ensure_directory(DAILY_DIR)
                 daily_file = DAILY_DIR / f"{month}.csv"
                 write_daily_csv(daily_file, daily_events)
-                logger.info(f"  {month}: {len(daily_events)} daily events → {daily_file}")
+                logger.info(
+                    f"  {month}: {len(daily_events)} daily events → {daily_file}"
+                )
 
             if hourly_events or daily_events:
                 processed_months.append(month)
