@@ -8,7 +8,7 @@ import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pytz
 from detection_types import OrcaHelloApiResponseV1, OrcaHelloDetection
@@ -23,9 +23,7 @@ from fetch_utils import (
     get_month_dir,
     get_months_in_range,
     is_month_complete,
-    load_cache_index,
     parse_timestamp_to_pst,
-    read_json,
     setup_logging,
     update_cache_index,
     write_json,
@@ -527,7 +525,7 @@ def main():
     # Log completion
     log_fetch_complete(args.cache_dir, months_saved, total_saved)
 
-    logger.info(f"\n✓ Fetch complete!")
+    logger.info("\n✓ Fetch complete!")
     logger.info(f"  Months updated: {months_saved}")
     logger.info(f"  Total detections: {total_saved}")
     logger.info(f"  Cache directory: {args.cache_dir}")

@@ -8,10 +8,9 @@ import argparse
 import logging
 import sys
 import time
-from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pytz
 from detection_types import OrcasoundDetectionGQL, OrcasoundFeedGQL
@@ -565,7 +564,7 @@ def main():
     # Log completion
     log_fetch_complete(args.cache_dir, months_saved, total_saved)
 
-    logger.info(f"\n✓ Fetch complete!")
+    logger.info("\n✓ Fetch complete!")
     logger.info(f"  Months updated: {months_saved}")
     logger.info(f"  Total detections: {total_saved}")
     logger.info(f"  Cache directory: {args.cache_dir}")
